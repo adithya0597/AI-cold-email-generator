@@ -12,7 +12,8 @@ ENV/
 .env.local
 .env.production
 .env.staging
-.env.example
+# Keep .env.example for reference
+# .env.example
 
 # Testing
 .pytest_cache/
@@ -75,7 +76,10 @@ sample_author_styles.xlsx
 # AI Files
 CLAUDE.MD
 .claude/
+
+# Documentation to exclude
 references/
 research/
-
-*.md
+IMPLEMENTATION_SUMMARY.md
+CLEANUP_SUMMARY.md
+*.tmp.md
