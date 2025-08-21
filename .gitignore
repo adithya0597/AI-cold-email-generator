@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+venv_linux/
+env/
+ENV/
+.env
+.env.local
+.env.production
+.env.staging
+.env.example
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+
+# Linting and formatting
+.ruff_cache/
+.mypy_cache/
+.flake8_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.staging.local
+
+# Backend
+backend/venv/
+backend/venv_linux/
+backend/env/
+backend/ENV/
+backend/.env
+backend/__pycache__
+
+
+# Uploads
+uploads/
+temp/
+*.tmp
+
+# Author styles Excel files
+*.xlsx
+*.xls
+sample_author_styles.xlsx
+
+# AI Files
+CLAUDE.MD
+.claude/
+references/
+research/
+
+*.md
