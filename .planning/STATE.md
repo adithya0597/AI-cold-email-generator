@@ -8,24 +8,24 @@
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 6 of 8 in current phase
-Status: In progress (Wave 3 - Plan 06 complete)
-Last activity: 2026-01-31 -- Completed 01-06-PLAN (Frontend Auth - Clerk React + Protected Routes)
+Plan: 7 of 8 in current phase
+Status: In progress (Wave 4 - Plan 07 complete)
+Last activity: 2026-01-31 -- Completed 01-07-PLAN (Observability Stack - OTel + Sentry + LLM Cost Tracking)
 
-Progress: [██████░░░░] ~8%
+Progress: [███████░░░] ~9%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: ~8 min
-- Total execution time: ~48 min
+- Total execution time: ~53 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 6/8 | ~48 min | ~8 min |
+| 1 | 7/8 | ~53 min | ~8 min |
 
 ## Accumulated Context
 
@@ -56,6 +56,10 @@ Progress: [██████░░░░] ~8%
 - [01-06]: AuthProvider gracefully degrades when VITE_CLERK_PUBLISHABLE_KEY is missing (renders children without auth wrapper)
 - [01-06]: Legacy routes (email, linkedin, author-styles, settings) remain public; only /dashboard is protected
 - [01-06]: Public api instance preserved for unauthenticated calls; useApiClient hook for authenticated calls
+- [01-07]: ConsoleSpanExporter for dev, OTLP placeholder for production -- swap when collector provisioned
+- [01-07]: Cost tracking is fire-and-forget (never breaks hot path) -- exceptions logged but swallowed
+- [01-07]: Budget alert at 80% of $6/month via Redis pub/sub channel alerts:cost:{user_id}
+- [01-07]: Admin endpoints under /api/v1/admin/ prefix
 
 ### Pending Todos
 
@@ -72,5 +76,5 @@ Progress: [██████░░░░] ~8%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-06-PLAN (Frontend Auth - Clerk React + Protected Routes)
+Stopped at: Completed 01-07-PLAN (Observability Stack - OTel + Sentry + LLM Cost Tracking)
 Resume file: None
