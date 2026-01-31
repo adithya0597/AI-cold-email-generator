@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 3 of 9 (Agent Framework Core)
-Plan: 1 of 8 in current phase
+Plan: 2 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 03-01-PLAN (ADR-1 Prototype -- LangGraph vs Custom)
+Last activity: 2026-01-31 -- Completed 03-02-PLAN (Database Schema + Agent Models)
 
-Progress: [███████████████░░░░░] ~24%
+Progress: [████████████████░░░░] ~26%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: ~7 min
-- Total execution time: ~99 min
+- Total execution time: ~104 min
 
 **By Phase:**
 
@@ -27,7 +27,7 @@ Progress: [███████████████░░░░░] ~24%
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
-| 3 | 1/8 | ~4 min | ~4 min |
+| 3 | 2/8 | ~9 min | ~5 min |
 
 ## Accumulated Context
 
@@ -85,6 +85,9 @@ Progress: [███████████████░░░░░] ~24%
 - [03-01]: ADR-1 resolved -- Custom orchestrator over LangGraph. No dual PG driver, Celery handles crash recovery, ~30 LOC delta for approval queue
 - [03-01]: LangGraph deps removed from requirements.txt; shared deps kept (langfuse, celery-redbeat, vcrpy, pytest-recording)
 - [03-01]: Prototype files kept as reference (_prototype_langgraph.py, _prototype_custom.py) but not imported by production code
+- [03-02]: Text constant classes (not PG Enum) for ApprovalStatus, BrakeState, ActivitySeverity, BriefingType -- avoids ALTER TYPE migrations
+- [03-02]: No langgraph_thread_id columns in approval_queue -- ADR-1 custom orchestrator decision
+- [03-02]: Migration 0003 written manually (no DB connection) -- review when first applied
 
 ### Pending Todos
 
@@ -101,5 +104,5 @@ Progress: [███████████████░░░░░] ~24%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-01-PLAN (ADR-1 Prototype). Phase 3 plan 1/8 done. Wave 0 gate cleared. Ready for Wave 1 (Plans 02 + 03 in parallel).
+Stopped at: Completed 03-02-PLAN (Database Schema + Agent Models). Phase 3 plan 2/8 done. Wave 1 in progress (Plan 03 can proceed in parallel).
 Resume file: None
