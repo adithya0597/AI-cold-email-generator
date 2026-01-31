@@ -62,12 +62,13 @@ def _run_async(coro):
 def agent_job_scout(self, user_id: str, task_data: dict) -> Dict[str, Any]:
     """Run the Job Scout agent for a user.
 
-    Placeholder -- the JobScoutAgent class will be implemented in Phase 4.
-    The task structure, Langfuse tracing, and error handling are ready now.
+    Queries job board APIs, deduplicates, scores against preferences,
+    and creates Match records. Langfuse trace wraps the full execution.
     """
     logger.info("agent_job_scout started for user=%s", user_id)
 
     async def _execute():
+        from app.agents.core.job_scout import JobScoutAgent
         from app.observability.langfuse_client import create_agent_trace, flush_traces
 
         trace = create_agent_trace(
@@ -76,14 +77,10 @@ def agent_job_scout(self, user_id: str, task_data: dict) -> Dict[str, Any]:
             celery_task_id=self.request.id,
         )
         try:
-            # TODO(Phase 4): Instantiate and run JobScoutAgent
-            # from app.agents.job_scout import JobScoutAgent
-            # agent = JobScoutAgent()
-            # result = await agent.run(user_id, task_data)
-            # trace.update(output=result.to_dict())
-            # return result.to_dict()
-            trace.update(output={"status": "not_implemented"})
-            return {"status": "not_implemented", "agent": "job_scout"}
+            agent = JobScoutAgent()
+            result = await agent.run(user_id, task_data)
+            trace.update(output=result.to_dict())
+            return result.to_dict()
         except Exception as exc:
             trace.update(level="ERROR", status_message=str(exc))
             raise
