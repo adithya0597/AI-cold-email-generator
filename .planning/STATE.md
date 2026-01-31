@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 4 of 9 (Job Discovery)
-Plan: 1 of ? in current phase
+Plan: 4 of ? in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 04-01 (Job Scout Agent Implementation)
+Last activity: 2026-01-31 -- Completed 04-04 (AI Job Matching Algorithm)
 
-Progress: [█████████████████████████░] ~41%
+Progress: [██████████████████████████░] ~43%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: ~6 min
-- Total execution time: ~143 min
+- Total execution time: ~149 min
 
 **By Phase:**
 
@@ -28,7 +28,7 @@ Progress: [███████████████████████
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
 | 3 | 8/8 | ~40 min | ~5 min |
-| 4 | 1/? | ~8 min | ~8 min |
+| 4 | 2/? | ~14 min | ~7 min |
 
 ## Accumulated Context
 
@@ -117,6 +117,10 @@ Progress: [███████████████████████
 - [04-01]: 5-category scoring (title 25, location 20, salary 20, skills 20, seniority 15) -- total 0-100
 - [04-01]: Deal-breakers skip job entirely (no Match record created); unknown salary is NOT a deal-breaker
 - [04-01]: Neutral mid-range scores when preferences are empty (not zeros)
+- [04-04]: Two-stage scoring: heuristic pre-filter (>= threshold*0.5) then GPT-3.5-turbo LLM refinement
+- [04-04]: Company size scoring (0-10 pts) added to heuristic; total normalized from 110 to 0-100 via int(raw/1.1)
+- [04-04]: MATCH_SCORE_THRESHOLD=40 replaces score>0 filter; LLM_SCORING_ENABLED feature flag
+- [04-04]: Cost tracking with token estimation (len//4); lazy imports for OpenAIClient and cost_tracker
 
 ### Pending Todos
 
@@ -133,5 +137,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 04-01 (Job Scout Agent Implementation). JobScoutAgent fully wired with JSearch+Adzuna sources, preference scoring, deal-breaker filtering, and 41 passing tests.
+Stopped at: Completed 04-04 (AI Job Matching Algorithm). Two-stage scoring pipeline (heuristic + LLM), company size dimension, configurable threshold, 36 tests passing.
 Resume file: None
