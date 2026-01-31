@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # --- Observability ---
     SENTRY_DSN: str = ""
 
+    # --- Langfuse (LLM observability -- replaces cost_tracker.py) ---
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "http://localhost:3000"
+
     # --- Email (Resend) ---
     RESEND_API_KEY: str = ""
 
