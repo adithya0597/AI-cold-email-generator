@@ -8,24 +8,24 @@
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 3 of 8 in current phase
-Status: In progress (Wave 2 started)
-Last activity: 2026-01-31 -- Completed 01-03-PLAN (Database Layer Resolution)
+Plan: 4 of 8 in current phase
+Status: In progress (Wave 2 complete)
+Last activity: 2026-01-31 -- Completed 01-04-PLAN (API Foundation + Clerk Auth Backend)
 
-Progress: [███░░░░░░░] ~4%
+Progress: [████░░░░░░] ~6%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: ~9 min
-- Total execution time: ~28 min
+- Total plans completed: 4
+- Average duration: ~10 min
+- Total execution time: ~40 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 3/8 | ~28 min | ~9 min |
+| 1 | 4/8 | ~40 min | ~10 min |
 
 ## Accumulated Context
 
@@ -46,6 +46,10 @@ Progress: [███░░░░░░░] ~4%
 - [01-03]: ADR-2 resolved -- SQLAlchemy is the ONLY app data access layer; Supabase SDK restricted to storage/auth/realtime
 - [01-03]: Direct connection (port 5432) with statement_cache_size=0 and jit=off for Supabase compatibility
 - [01-03]: Alembic baseline migration stamped (not executed) -- tables already exist from Supabase migration 00001
+- [01-04]: App factory pattern (create_app) for composable middleware and testability
+- [01-04]: Legacy routes preserved alongside new /api/v1/ routes for backward compatibility
+- [01-04]: Rate limiter defaults all users to Pro tier (1000 req/hr) until user tier DB lookup is implemented
+- [01-04]: In-memory rate limit fallback when Redis unavailable (per-process, dev-only)
 
 ### Pending Todos
 
@@ -62,5 +66,5 @@ Progress: [███░░░░░░░] ~4%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-03-PLAN (Database Layer Resolution)
+Stopped at: Completed 01-04-PLAN (API Foundation + Clerk Auth Backend)
 Resume file: None
