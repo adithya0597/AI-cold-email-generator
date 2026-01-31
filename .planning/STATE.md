@@ -3,30 +3,30 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 2 - Onboarding + Preferences (In Progress)
+**Current focus:** Phase 2 - Onboarding + Preferences (Complete)
 
 ## Current Position
 
 Phase: 2 of 9 (Onboarding + Preferences)
-Plan: 5 of 6 in current phase
-Status: In progress
-Last activity: 2026-01-31 -- Completed 02-05-PLAN (Onboarding Frontend Flow)
+Plan: 6 of 6 in current phase
+Status: Phase complete
+Last activity: 2026-01-31 -- Completed 02-06-PLAN (Preference Wizard Frontend + Integration Wiring)
 
-Progress: [████████████░] ~20%
+Progress: [██████████████░░░░░░] ~22%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: ~7 min
-- Total execution time: ~87 min
+- Total execution time: ~95 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
-| 2 | 5/6 | ~24 min | ~5 min |
+| 2 | 6/6 | ~32 min | ~5 min |
 
 ## Accumulated Context
 
@@ -77,6 +77,10 @@ Progress: [████████████░] ~20%
 - [02-04]: Autonomy level l0 treated as "not configured" in missing_sections to encourage active user choice
 - [02-05]: Each onboarding step manages its own navigation buttons; WizardShell used for step indicator only
 - [02-05]: SkillTagInput is a local component in ProfileReview (not extracted to shared/) -- specific to onboarding
+- [02-06]: Each preference step manages its own nav buttons (consistent with onboarding pattern)
+- [02-06]: TagInput and ChipPicker extracted as shared components in preferences/ directory
+- [02-06]: OnboardingGuard allows through on API failure -- graceful degradation over blocking
+- [02-06]: Preferences store reset on final submit to prevent stale state on revisit
 
 ### Pending Todos
 
@@ -93,5 +97,5 @@ Progress: [████████████░] ~20%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-05-PLAN (Onboarding Frontend Flow). Wave 3 complete. Ready for Wave 4: 02-06 (Preference Wizard Frontend + Integration Wiring).
+Stopped at: Completed 02-06-PLAN (Preference Wizard Frontend + Integration Wiring). Phase 2 complete (6/6 plans). Ready for Phase 3.
 Resume file: None
