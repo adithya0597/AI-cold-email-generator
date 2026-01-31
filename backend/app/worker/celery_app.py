@@ -76,6 +76,14 @@ celery_app.conf.update(
     # --- Misc ---
     timezone="UTC",
     enable_utc=True,
+
+    # --- RedBeat (dynamic per-user scheduling) ---
+    # Use RedBeat as the beat scheduler for dynamic schedule management.
+    # Schedules are stored in Redis and can be added/removed without restart.
+    beat_scheduler="redbeat.RedBeatScheduler",
+    redbeat_redis_url=settings.REDIS_URL,
+    redbeat_key_prefix="redbeat:",
+    redbeat_lock_key=None,  # Disable lock for single-beat deployments
 )
 
 # Auto-discover tasks in the worker package.

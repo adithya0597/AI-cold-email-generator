@@ -208,16 +208,14 @@ def briefing_generate(
             celery_task_id=self.request.id,
         )
         try:
-            # TODO(Plan 05): Call briefing generator with fallback
-            # from app.agents.briefing.fallback import generate_briefing_with_fallback
-            # briefing = await generate_briefing_with_fallback(user_id)
-            # if channels:
-            #     from app.agents.briefing.delivery import deliver_briefing
-            #     await deliver_briefing(user_id, briefing, channels)
-            # trace.update(output=briefing)
-            # return briefing
-            trace.update(output={"status": "not_implemented"})
-            return {"status": "not_implemented", "agent": "briefing"}
+            from app.agents.briefing.fallback import generate_briefing_with_fallback
+            from app.agents.briefing.delivery import deliver_briefing
+
+            briefing = await generate_briefing_with_fallback(user_id)
+            if channels:
+                await deliver_briefing(user_id, briefing, channels)
+            trace.update(output=briefing)
+            return briefing
         except Exception as exc:
             trace.update(level="ERROR", status_message=str(exc))
             raise
