@@ -1,5 +1,16 @@
 """
-LLM client abstraction for multiple providers
+LLM client abstraction for multiple providers.
+
+NOTE: These clients use raw httpx HTTP calls to the OpenAI and Anthropic APIs,
+NOT the official openai or anthropic Python SDKs. This means they are unaffected
+by SDK version changes (e.g., openai v1 -> v2 migration).
+
+TODO (Phase 3): Consider migrating to official SDK v2 clients for:
+  - Structured output support (openai SDK v2)
+  - Streaming with proper backpressure
+  - Built-in retry and rate limiting
+  - Token counting utilities
+  - Cost tracking integration via callbacks
 """
 
 import os
