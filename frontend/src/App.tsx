@@ -1,22 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { SignedIn, SignedOut, RedirectToSignIn, UserButton } from '@clerk/clerk-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers } from 'react-icons/fi';
+import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers, FiLogIn } from 'react-icons/fi';
 
 import ColdEmailGenerator from './components/ColdEmailGenerator';
 import LinkedInPostGenerator from './components/LinkedInPostGenerator';
 import AuthorStylesManager from './components/AuthorStylesManager';
-import Dashboard from './components/Dashboard';
+import LegacyDashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
 import { utilityService } from './services/api';
 
+/**
+ * ProtectedRoute -- requires Clerk authentication.
+ * Renders children if signed in, otherwise redirects to sign-in.
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
+  );
+}
+
 function App() {
-  const [healthStatus, setHealthStatus] = useState(null);
+  const [healthStatus, setHealthStatus] = useState<{ status: string } | null>(null);
 
   useEffect(() => {
-    // Check API health on mount
     checkApiHealth();
   }, []);
 
@@ -27,7 +45,7 @@ function App() {
       if (health.status !== 'healthy') {
         toast.warning('Some services may be degraded');
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Unable to connect to backend API');
       setHealthStatus({ status: 'error' });
     }
@@ -43,7 +61,7 @@ function App() {
               <div className="flex">
                 <div className="flex-shrink-0 flex items-center">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                    AI Content Suite
+                    JobPilot
                   </h1>
                 </div>
                 <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
@@ -127,7 +145,7 @@ function App() {
                   </NavLink>
                 </div>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <div
                     className={`h-2 w-2 rounded-full ${
@@ -142,6 +160,18 @@ function App() {
                     {healthStatus?.status || 'Checking...'}
                   </span>
                 </div>
+                <SignedIn>
+                  <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+                <SignedOut>
+                  <NavLink
+                    to="/sign-in"
+                    className="inline-flex items-center px-3 py-1.5 border border-primary-500 text-sm font-medium rounded-md text-primary-600 hover:bg-primary-50"
+                  >
+                    <FiLogIn className="mr-1.5" />
+                    Sign In
+                  </NavLink>
+                </SignedOut>
               </div>
             </div>
           </div>
@@ -234,12 +264,26 @@ function App() {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/sign-in/*" element={<SignIn />} />
+            <Route path="/sign-up/*" element={<SignUp />} />
+
+            {/* Legacy public routes (existing features) */}
             <Route path="/email" element={<ColdEmailGenerator />} />
             <Route path="/linkedin" element={<LinkedInPostGenerator />} />
             <Route path="/author-styles" element={<AuthorStylesManager />} />
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
 
