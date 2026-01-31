@@ -3,23 +3,23 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 3 - Agent Framework Core (COMPLETE)
+**Current focus:** Phase 4 - Job Discovery (In Progress)
 
 ## Current Position
 
-Phase: 3 of 9 (Agent Framework Core)
-Plan: 8 of 8 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 -- Completed 03-08-PLAN (Integration Tests + Phase Verification)
+Phase: 4 of 9 (Job Discovery)
+Plan: 1 of ? in current phase
+Status: In progress
+Last activity: 2026-01-31 -- Completed 04-01 (Job Scout Agent Implementation)
 
-Progress: [████████████████████████░] ~39%
+Progress: [█████████████████████████░] ~41%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 23
 - Average duration: ~6 min
-- Total execution time: ~135 min
+- Total execution time: ~143 min
 
 **By Phase:**
 
@@ -28,6 +28,7 @@ Progress: [███████████████████████
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
 | 3 | 8/8 | ~40 min | ~5 min |
+| 4 | 1/? | ~8 min | ~8 min |
 
 ## Accumulated Context
 
@@ -112,6 +113,10 @@ Progress: [███████████████████████
 - [03-08]: VCR cassette infra with record_mode=none; switch to once when recording against live API
 - [03-08]: Integration tests marked @pytest.mark.integration with manual verification docs
 - [03-08]: All agent tests use mocked Redis/DB; no real connections needed
+- [04-01]: SHA-256 dedup keys (URL or title+company+location hash) for job deduplication
+- [04-01]: 5-category scoring (title 25, location 20, salary 20, skills 20, seniority 15) -- total 0-100
+- [04-01]: Deal-breakers skip job entirely (no Match record created); unknown salary is NOT a deal-breaker
+- [04-01]: Neutral mid-range scores when preferences are empty (not zeros)
 
 ### Pending Todos
 
@@ -128,5 +133,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-08-PLAN (Integration Tests + Phase Verification). Phase 3 COMPLETE (8/8 plans). All 5 success criteria verified by tests. Ready for Phase 4: Job Discovery.
+Stopped at: Completed 04-01 (Job Scout Agent Implementation). JobScoutAgent fully wired with JSearch+Adzuna sources, preference scoring, deal-breaker filtering, and 41 passing tests.
 Resume file: None
