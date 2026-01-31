@@ -1,4 +1,5 @@
 import { useUser, UserButton } from '@clerk/clerk-react';
+import AgentActivityFeed from '../components/AgentActivityFeed';
 import BriefingCard, {
   BriefingEmptyState,
 } from '../components/briefing/BriefingCard';
@@ -74,6 +75,11 @@ export default function Dashboard() {
             <p className="text-xs text-purple-600 mt-1">Coming soon</p>
           </div>
         </div>
+      </div>
+
+      {/* Agent Activity Feed */}
+      <div className="mb-6">
+        <AgentActivityFeed />
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
