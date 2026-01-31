@@ -133,7 +133,7 @@ Migrate the frontend from Create React App to Vite, rename JSX files, convert en
 
 ### Tasks
 
-**Task 1: Uninstall CRA, install Vite + TypeScript + modern stack**
+**Task 1: Uninstall CRA, install Vite + TypeScript + modern stack** [DONE]
 - Files: `frontend/package.json`, `frontend/vite.config.ts` (NEW), `frontend/tsconfig.json` (NEW), `frontend/tsconfig.node.json` (NEW)
 - Action:
   - `cd frontend && npm uninstall react-scripts`
@@ -177,7 +177,7 @@ Migrate the frontend from Create React App to Vite, rename JSX files, convert en
 - Verify: `cat frontend/package.json | grep vite` shows vite in devDependencies; `cat frontend/vite.config.ts` exists
 - Done: Package.json has Vite scripts, CRA references fully removed
 
-**Task 2: Migrate HTML entry point and rename JSX files**
+**Task 2: Migrate HTML entry point and rename JSX files** [DONE]
 - Files: `frontend/index.html` (NEW, moved from public/), `frontend/src/*.jsx` (renamed from .js), `frontend/src/components/*.jsx` (renamed from .js)
 - Action:
   - Move `frontend/public/index.html` to `frontend/index.html`

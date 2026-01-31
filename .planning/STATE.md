@@ -8,24 +8,24 @@
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 1 of 8 in current phase
-Status: In progress
-Last activity: 2026-01-31 -- Completed 01-01-PLAN (Backend Dependency Modernization)
+Plan: 2 of 8 in current phase
+Status: In progress (Wave 1 complete)
+Last activity: 2026-01-31 -- Completed 01-02-PLAN (CRA-to-Vite + TypeScript Migration)
 
-Progress: [█░░░░░░░░░] ~1%
+Progress: [██░░░░░░░░] ~3%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: ~5 min
-- Total execution time: ~5 min
+- Total plans completed: 2
+- Average duration: ~10 min
+- Total execution time: ~20 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 1/8 | ~5 min | ~5 min |
+| 1 | 2/8 | ~20 min | ~10 min |
 
 ## Accumulated Context
 
@@ -39,6 +39,10 @@ Progress: [█░░░░░░░░░] ~1%
 - [01-01]: ADR-6 resolved -- Resend chosen over SendGrid for transactional email
 - [01-01]: Ruff replaces black + flake8 as single linter/formatter
 - [01-01]: LLM clients use raw httpx (not SDK) -- safe from openai v2 breaking changes; SDK migration deferred to Phase 3
+- [01-02]: `allowJs: true` in tsconfig.json for incremental JS-to-TS migration
+- [01-02]: `strict: false` initially -- tighten as files convert to TypeScript
+- [01-02]: `"build": "vite build"` not `"tsc && vite build"` -- tsc would fail on unconverted files
+- [01-02]: ESM format for all config files (package.json has `"type": "module"`)
 
 ### Pending Todos
 
@@ -50,10 +54,10 @@ Progress: [█░░░░░░░░░] ~1%
 
 - ADR-1 (LangGraph vs Custom orchestrator) MUST be resolved at start of Phase 3 via 2-day prototype
 - Dual database abstraction (Supabase SDK vs SQLAlchemy) must be resolved in Phase 1 -- blocks all data work
-- CRA is deprecated with no security patches -- migration to Vite is blocking for frontend work
+- ~~CRA is deprecated with no security patches -- migration to Vite is blocking for frontend work~~ RESOLVED in 01-02
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-01-PLAN (Backend Dependency Modernization)
+Stopped at: Completed 01-02-PLAN (CRA-to-Vite + TypeScript Migration)
 Resume file: None
