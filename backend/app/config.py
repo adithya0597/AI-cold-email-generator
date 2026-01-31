@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     RAPIDAPI_KEY: str = ""
     ADZUNA_APP_ID: str = ""
     ADZUNA_APP_KEY: str = ""
+    INDEED_RAPIDAPI_HOST: str = ""  # e.g. "indeed-scraper.p.rapidapi.com"
+    LINKEDIN_RAPIDAPI_HOST: str = ""  # e.g. "linkedin-jobs-scraper-api1.p.rapidapi.com"
+
+    # --- Job Matching ---
+    MATCH_SCORE_THRESHOLD: int = 40
+    LLM_SCORING_ENABLED: bool = True
 
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:3000"

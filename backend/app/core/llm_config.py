@@ -34,7 +34,7 @@ class LLMConfig:
         Returns:
             tuple of (model_name, max_tokens)
         """
-        fast_tasks = ["tone_analysis", "subject_generation", "hashtag_generation"]
+        fast_tasks = ["tone_analysis", "subject_generation", "hashtag_generation", "job_scoring"]
         
         if task_type in fast_tasks:
             return cls.FAST_MODEL, cls.MAX_TOKENS_FAST
