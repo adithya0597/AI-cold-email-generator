@@ -8,24 +8,24 @@
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 2 of 8 in current phase
-Status: In progress (Wave 1 complete)
-Last activity: 2026-01-31 -- Completed 01-02-PLAN (CRA-to-Vite + TypeScript Migration)
+Plan: 3 of 8 in current phase
+Status: In progress (Wave 2 started)
+Last activity: 2026-01-31 -- Completed 01-03-PLAN (Database Layer Resolution)
 
-Progress: [██░░░░░░░░] ~3%
+Progress: [███░░░░░░░] ~4%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~10 min
-- Total execution time: ~20 min
+- Total plans completed: 3
+- Average duration: ~9 min
+- Total execution time: ~28 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 2/8 | ~20 min | ~10 min |
+| 1 | 3/8 | ~28 min | ~9 min |
 
 ## Accumulated Context
 
@@ -43,6 +43,9 @@ Progress: [██░░░░░░░░] ~3%
 - [01-02]: `strict: false` initially -- tighten as files convert to TypeScript
 - [01-02]: `"build": "vite build"` not `"tsc && vite build"` -- tsc would fail on unconverted files
 - [01-02]: ESM format for all config files (package.json has `"type": "module"`)
+- [01-03]: ADR-2 resolved -- SQLAlchemy is the ONLY app data access layer; Supabase SDK restricted to storage/auth/realtime
+- [01-03]: Direct connection (port 5432) with statement_cache_size=0 and jit=off for Supabase compatibility
+- [01-03]: Alembic baseline migration stamped (not executed) -- tables already exist from Supabase migration 00001
 
 ### Pending Todos
 
@@ -53,11 +56,11 @@ Progress: [██░░░░░░░░] ~3%
 ### Blockers/Concerns
 
 - ADR-1 (LangGraph vs Custom orchestrator) MUST be resolved at start of Phase 3 via 2-day prototype
-- Dual database abstraction (Supabase SDK vs SQLAlchemy) must be resolved in Phase 1 -- blocks all data work
+- ~~Dual database abstraction (Supabase SDK vs SQLAlchemy) must be resolved in Phase 1 -- blocks all data work~~ RESOLVED in 01-03 (ADR-2)
 - ~~CRA is deprecated with no security patches -- migration to Vite is blocking for frontend work~~ RESOLVED in 01-02
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-02-PLAN (CRA-to-Vite + TypeScript Migration)
+Stopped at: Completed 01-03-PLAN (Database Layer Resolution)
 Resume file: None
