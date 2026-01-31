@@ -1,0 +1,221 @@
+# generated: 2026-01-30
+# project: JobPilot
+# project_key: jobpilot
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-30
+project: JobPilot
+project_key: jobpilot
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ═══════════════════════════════════════════
+  # Epic 0: Platform Foundation (15 stories)
+  # ═══════════════════════════════════════════
+  epic-0: in-progress
+  0-1-database-schema-foundation: review
+  0-2-row-level-security-policies: backlog
+  0-3-clerk-authentication-integration: backlog
+  0-4-api-foundation-with-versioning: backlog
+  0-5-redis-cache-and-queue-setup: backlog
+  0-6-celery-worker-infrastructure: backlog
+  0-7-opentelemetry-tracing-setup: backlog
+  0-8-llm-cost-tracking-middleware: backlog
+  0-9-error-tracking-integration: backlog
+  0-10-websocket-infrastructure: backlog
+  0-11-email-service-configuration: backlog
+  0-12-ci-cd-pipeline-with-automated-tests: backlog
+  0-13-supabase-storage-configuration: backlog
+  0-14-performance-baseline-establishment: backlog
+  0-15-gdpr-data-portability-endpoints: backlog
+  epic-0-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 1: Lightning Onboarding (6 stories)
+  # ═══════════════════════════════════════════
+  epic-1: backlog
+  1-1-linkedin-url-profile-extraction: backlog
+  1-2-resume-file-upload-and-parsing: backlog
+  1-3-profile-review-and-correction-ui: backlog
+  1-4-first-briefing-preview: backlog
+  1-5-onboarding-empty-state: backlog
+  1-6-onboarding-analytics-events: backlog
+  epic-1-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 2: Preference Configuration (8 stories)
+  # ═══════════════════════════════════════════
+  epic-2: backlog
+  2-1-job-type-and-title-preferences: backlog
+  2-2-location-and-remote-work-settings: backlog
+  2-3-salary-range-configuration: backlog
+  2-4-deal-breaker-definition: backlog
+  2-5-h1b-sponsorship-requirement: backlog
+  2-6-autonomy-level-selection: backlog
+  2-7-preference-summary-and-confirmation: backlog
+  2-8-preference-empty-states: backlog
+  epic-2-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 3: Agent Orchestration Core (11 stories)
+  # ═══════════════════════════════════════════
+  epic-3: backlog
+  3-1-orchestrator-agent-infrastructure: backlog
+  3-2-daily-briefing-generation-pipeline: backlog
+  3-3-briefing-delivery-in-app: backlog
+  3-4-briefing-delivery-email: backlog
+  3-5-user-configurable-briefing-time: backlog
+  3-6-emergency-brake-button: backlog
+  3-7-emergency-brake-state-machine: backlog
+  3-8-resume-agents-after-pause: backlog
+  3-9-agent-activity-feed: backlog
+  3-10-briefing-empty-state: backlog
+  3-11-briefing-reliability-fallback: backlog
+  epic-3-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 4: AI-Powered Job Matching (10 stories)
+  # ═══════════════════════════════════════════
+  epic-4: in-progress
+  4-1-job-scout-agent-implementation: done
+  4-2-indeed-job-board-integration: backlog
+  4-3-linkedin-job-scraping-integration: backlog
+  4-4-ai-job-matching-algorithm: backlog
+  4-5-match-rationale-generation: backlog
+  4-6-swipe-card-interface: backlog
+  4-7-top-pick-of-the-day-feature: backlog
+  4-8-job-detail-expansion: backlog
+  4-9-preference-learning-from-swipe-behavior: backlog
+  4-10-job-matches-empty-state: backlog
+  epic-4-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 5: Application Automation (14 stories)
+  # ═══════════════════════════════════════════
+  epic-5: backlog
+  5-1-resume-agent-implementation: backlog
+  5-2-master-resume-management: backlog
+  5-3-resume-diff-view: backlog
+  5-4-ats-optimization-logic: backlog
+  5-5-cover-letter-generator: backlog
+  5-6-cover-letter-personalization: backlog
+  5-7-apply-agent-implementation: backlog
+  5-8-approval-queue-for-applications: backlog
+  5-9-one-tap-approval-from-briefing: backlog
+  5-10-application-submission-confirmation: backlog
+  5-11-application-failure-handling: backlog
+  5-12-indeed-easy-apply-integration: backlog
+  5-13-application-history-and-materials: backlog
+  5-14-application-empty-state: backlog
+  epic-5-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 6: Pipeline & Privacy (14 stories)
+  # ═══════════════════════════════════════════
+  epic-6: backlog
+  6-1-pipeline-agent-implementation: backlog
+  6-2-gmail-oauth-integration: backlog
+  6-3-outlook-oauth-integration: backlog
+  6-4-email-status-detection: backlog
+  6-5-kanban-pipeline-view: backlog
+  6-6-pipeline-list-view: backlog
+  6-7-follow-up-agent-implementation: backlog
+  6-8-follow-up-draft-generation: backlog
+  6-9-follow-up-tracking: backlog
+  6-10-stealth-mode-activation: backlog
+  6-11-employer-blocklist: backlog
+  6-12-privacy-proof-documentation: backlog
+  6-13-passive-mode-settings: backlog
+  6-14-pipeline-empty-state: backlog
+  epic-6-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 7: H1B Specialist Experience (10 stories)
+  # ═══════════════════════════════════════════
+  epic-7: backlog
+  7-1-h1b-data-aggregation-pipeline: backlog
+  7-2-h1bgrader-integration: backlog
+  7-3-myvisajobs-integration: backlog
+  7-4-uscis-public-data-integration: backlog
+  7-5-sponsor-scorecard-ui: backlog
+  7-6-approval-rate-visualization: backlog
+  7-7-verified-sponsor-badge-on-job-cards: backlog
+  7-8-h1b-filter-in-job-search: backlog
+  7-9-sponsor-data-freshness-infrastructure: backlog
+  7-10-h1b-empty-state: backlog
+  epic-7-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 8: Interview Preparation (8 stories)
+  # ═══════════════════════════════════════════
+  epic-8: backlog
+  8-1-interview-intel-agent-implementation: backlog
+  8-2-company-research-synthesis: backlog
+  8-3-interviewer-background-research: backlog
+  8-4-common-interview-questions: backlog
+  8-5-star-response-suggestions: backlog
+  8-6-prep-briefing-delivery: backlog
+  8-7-calendar-integration-for-interview-detection: backlog
+  8-8-interview-prep-empty-state: backlog
+  epic-8-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 9: Network Building (8 stories)
+  # ═══════════════════════════════════════════
+  epic-9: backlog
+  9-1-network-agent-implementation: backlog
+  9-2-warm-path-finder: backlog
+  9-3-introduction-request-message-drafts: backlog
+  9-4-content-engagement-tracking: backlog
+  9-5-relationship-temperature-scoring: backlog
+  9-6-human-approval-for-direct-outreach: backlog
+  9-7-network-dashboard: backlog
+  9-8-network-empty-state: backlog
+  epic-9-retrospective: optional
+
+  # ═══════════════════════════════════════════
+  # Epic 10: Enterprise Administration (10 stories)
+  # ═══════════════════════════════════════════
+  epic-10: backlog
+  10-1-enterprise-admin-role-and-permissions: backlog
+  10-2-bulk-employee-onboarding-via-csv: backlog
+  10-3-employee-invitation-flow: backlog
+  10-4-aggregate-metrics-dashboard: backlog
+  10-5-per-employee-autonomy-configuration: backlog
+  10-6-at-risk-employee-alerts: backlog
+  10-7-roi-reporting: backlog
+  10-8-pii-detection-alerts: backlog
+  10-9-enterprise-billing-management: backlog
+  10-10-enterprise-empty-state: backlog
+  epic-10-retrospective: optional
