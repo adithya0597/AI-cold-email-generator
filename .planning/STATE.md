@@ -3,23 +3,23 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 2 - Onboarding + Preferences (Complete)
+**Current focus:** Phase 3 - Agent Framework Core (In Progress)
 
 ## Current Position
 
-Phase: 2 of 9 (Onboarding + Preferences)
-Plan: 6 of 6 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 -- Completed 02-06-PLAN (Preference Wizard Frontend + Integration Wiring)
+Phase: 3 of 9 (Agent Framework Core)
+Plan: 1 of 8 in current phase
+Status: In progress
+Last activity: 2026-01-31 -- Completed 03-01-PLAN (ADR-1 Prototype -- LangGraph vs Custom)
 
-Progress: [██████████████░░░░░░] ~22%
+Progress: [███████████████░░░░░] ~24%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: ~7 min
-- Total execution time: ~95 min
+- Total execution time: ~99 min
 
 **By Phase:**
 
@@ -27,6 +27,7 @@ Progress: [██████████████░░░░░░] ~22%
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
+| 3 | 1/8 | ~4 min | ~4 min |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Progress: [██████████████░░░░░░] ~22%
 - [02-06]: TagInput and ChipPicker extracted as shared components in preferences/ directory
 - [02-06]: OnboardingGuard allows through on API failure -- graceful degradation over blocking
 - [02-06]: Preferences store reset on final submit to prevent stale state on revisit
+- [03-01]: ADR-1 resolved -- Custom orchestrator over LangGraph. No dual PG driver, Celery handles crash recovery, ~30 LOC delta for approval queue
+- [03-01]: LangGraph deps removed from requirements.txt; shared deps kept (langfuse, celery-redbeat, vcrpy, pytest-recording)
+- [03-01]: Prototype files kept as reference (_prototype_langgraph.py, _prototype_custom.py) but not imported by production code
 
 ### Pending Todos
 
@@ -90,12 +94,12 @@ Progress: [██████████████░░░░░░] ~22%
 
 ### Blockers/Concerns
 
-- ADR-1 (LangGraph vs Custom orchestrator) MUST be resolved at start of Phase 3 via 2-day prototype
+- ~~ADR-1 (LangGraph vs Custom orchestrator) MUST be resolved at start of Phase 3 via 2-day prototype~~ RESOLVED in 03-01 (Custom wins)
 - ~~Dual database abstraction (Supabase SDK vs SQLAlchemy) must be resolved in Phase 1 -- blocks all data work~~ RESOLVED in 01-03 (ADR-2)
 - ~~CRA is deprecated with no security patches -- migration to Vite is blocking for frontend work~~ RESOLVED in 01-02
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-06-PLAN (Preference Wizard Frontend + Integration Wiring). Phase 2 complete (6/6 plans). Ready for Phase 3.
+Stopped at: Completed 03-01-PLAN (ADR-1 Prototype). Phase 3 plan 1/8 done. Wave 0 gate cleared. Ready for Wave 1 (Plans 02 + 03 in parallel).
 Resume file: None
