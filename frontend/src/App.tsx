@@ -15,6 +15,8 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
+import Preferences from './pages/Preferences';
+import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 
 /**
@@ -286,10 +288,20 @@ function App() {
               }
             />
             <Route
+              path="/preferences"
+              element={
+                <ProtectedRoute>
+                  <Preferences />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <OnboardingGuard>
+                    <Dashboard />
+                  </OnboardingGuard>
                 </ProtectedRoute>
               }
             />
