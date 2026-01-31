@@ -8,25 +8,25 @@
 ## Current Position
 
 Phase: 2 of 9 (Onboarding + Preferences)
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 02-02-PLAN (PostHog Analytics Infrastructure)
+Last activity: 2026-01-31 -- Completed 02-03-PLAN (Resume Upload + Profile Extraction Backend)
 
-Progress: [█████████░] ~13%
+Progress: [██████████░] ~16%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: ~7 min
-- Total execution time: ~71 min
+- Total execution time: ~75 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
-| 2 | 2/6 | ~8 min | ~4 min |
+| 2 | 3/6 | ~12 min | ~4 min |
 
 ## Accumulated Context
 
@@ -69,6 +69,9 @@ Progress: [█████████░] ~13%
 - [02-01]: Hybrid relational + JSONB schema for user_preferences -- deal-breakers get dedicated indexed columns, evolving prefs go in JSONB
 - [02-01]: Migration 0002 written manually (no DB connection) -- review when first applied
 - [02-02]: AnalyticsProvider decoupled from Clerk useUser -- standalone identifyUser() export avoids crash when Clerk key missing
+- [02-03]: Resume parser uses OpenAI SDK v2 structured outputs (AsyncOpenAI.beta.chat.completions.parse) -- separate from legacy httpx client
+- [02-03]: ensure_user_exists shared between onboarding and preferences modules (defined in preferences.py, imported by onboarding.py)
+- [02-03]: LinkedIn extraction designed for graceful failure -- returns None on any error, never raises
 
 ### Pending Todos
 
@@ -85,5 +88,5 @@ Progress: [█████████░] ~13%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-02-PLAN (PostHog Analytics Infrastructure). Wave 1 complete. Ready for Wave 2: 02-03 (Resume Upload) and 02-04 (Preferences Backend).
+Stopped at: Completed 02-03-PLAN (Resume Upload + Profile Extraction Backend). Wave 2 in progress. Ready for 02-04 (Preferences Backend) if not already done, then Wave 3: 02-05 (Onboarding Frontend).
 Resume file: None
