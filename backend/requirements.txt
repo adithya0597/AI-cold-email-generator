@@ -49,14 +49,7 @@ python-dotenv>=1.0.0
 email-validator>=2.1.0
 structlog>=23.2.0
 
-# --- ADR-1 PROTOTYPE ONLY (remove if Custom wins) ---
-langgraph>=0.3.0
-langgraph-checkpoint-postgres>=3.0.2
-psycopg[binary,pool]>=3.1.0
-langchain-core>=0.3.0
-langchain-openai>=0.3.0
-
-# --- Phase 3: Shared dependencies (needed regardless of ADR-1 outcome) ---
+# --- Phase 3: Agent framework (ADR-1: Custom chosen over LangGraph) ---
 langfuse>=2.0.0
 celery-redbeat>=2.3.3
 vcrpy>=6.0.0
