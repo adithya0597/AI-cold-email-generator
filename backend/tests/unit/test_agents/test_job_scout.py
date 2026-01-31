@@ -35,6 +35,7 @@ def _make_job(**kwargs) -> SimpleNamespace:
         "source": "jsearch",
         "source_id": "j1",
         "url": "https://acme.com/apply/1",
+        "raw_data": {},
     }
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -186,12 +187,29 @@ class TestBuildRationale:
             "salary": (18, 20),
             "skills": (10, 20),
             "seniority": (10, 15),
+            "company_size": (5, 10),
         }
+        # Raw sum = 83, normalized = int(83/1.1) = 75
         rationale = agent._build_rationale(breakdown)
-        assert "78% match" in rationale
+        assert "75% match" in rationale
         assert "title (20/25)" in rationale
         assert "location (20/20)" in rationale
         assert "salary (18/20)" in rationale
+        assert "company_size (5/10)" in rationale
+
+    def test_explicit_normalized_total(self):
+        """Rationale uses explicit normalized total when provided."""
+        agent = JobScoutAgent()
+        breakdown = {
+            "title": (20, 25),
+            "location": (20, 20),
+            "salary": (18, 20),
+            "skills": (10, 20),
+            "seniority": (10, 15),
+            "company_size": (5, 10),
+        }
+        rationale = agent._build_rationale(breakdown, normalized_total=80)
+        assert "80% match" in rationale
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +281,11 @@ class TestExecute:
             "_fetch_jobs",
             new_callable=AsyncMock,
             return_value=raw_jobs,
-        ):
+        ), patch(
+            "app.config.settings",
+        ) as mock_settings:
+            mock_settings.LLM_SCORING_ENABLED = False
+            mock_settings.MATCH_SCORE_THRESHOLD = 40
             result = await self.agent.execute("user-1", {})
 
         assert isinstance(result, AgentOutput)
@@ -331,6 +353,114 @@ class TestExecute:
         assert isinstance(result, AgentOutput)
         assert result.data["jobs_found"] == 0
         assert result.data["matches_created"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Celery task integration test
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Company size scoring tests
+# ---------------------------------------------------------------------------
+
+
+class TestCompanySizeScoring:
+    """Tests for _score_company_size method."""
+
+    def setup_method(self):
+        self.agent = JobScoutAgent()
+
+    def test_known_size_meets_preference(self):
+        """Company size >= min_company_size returns 10."""
+        job = _make_job(raw_data={"companySize": 100})
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 10
+
+    def test_known_size_below_preference(self):
+        """Company size < min_company_size returns 0."""
+        job = _make_job(raw_data={"companySize": 20})
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 0
+
+    def test_unknown_size_neutral(self):
+        """Unknown company size returns 5 (neutral)."""
+        job = _make_job(raw_data={})
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 5
+
+    def test_no_preference_neutral(self):
+        """No min_company_size preference returns 5 (neutral)."""
+        job = _make_job(raw_data={"companySize": 100})
+        assert self.agent._score_company_size(job, {}) == 5
+
+    def test_alternate_key_company_size(self):
+        """Supports company_size key."""
+        job = _make_job(raw_data={"company_size": 200})
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 10
+
+    def test_alternate_key_employer_size(self):
+        """Supports employerSize key."""
+        job = _make_job(raw_data={"employerSize": 200})
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 10
+
+    def test_no_raw_data_neutral(self):
+        """Job without raw_data attribute returns 5 (neutral)."""
+        job = _make_job()
+        # Default _make_job has raw_data={} so remove it
+        del job.raw_data
+        prefs = {"min_company_size": 50}
+        assert self.agent._score_company_size(job, prefs) == 5
+
+    def test_company_size_in_full_score(self):
+        """Company size is included in _score_job breakdown."""
+        job = _make_job(raw_data={"companySize": 100})
+        prefs = {**FULL_PREFERENCES, "min_company_size": 50}
+        score, rationale = self.agent._score_job(job, prefs, FULL_PROFILE)
+        assert "company_size" in rationale
+
+
+# ---------------------------------------------------------------------------
+# Threshold filtering tests
+# ---------------------------------------------------------------------------
+
+
+class TestThresholdFiltering:
+    """Tests for score threshold filtering."""
+
+    def setup_method(self):
+        self.agent = JobScoutAgent()
+
+    def test_job_below_threshold_excluded(self):
+        """Job with low score is excluded after scoring."""
+        # A job that matches nothing should score very low
+        job = _make_job(
+            title="Chef",
+            company="Restaurant",
+            description="Cooking experience needed.",
+            location="Rural Montana",
+            salary_min=30000,
+            salary_max=40000,
+            remote=False,
+        )
+        prefs = {
+            "target_titles": ["Software Engineer"],
+            "target_locations": ["San Francisco"],
+            "salary_minimum": 120000,
+            "salary_target": 180000,
+            "seniority_levels": ["senior"],
+        }
+        score, _ = self.agent._score_job(job, prefs, {"skills": ["Python"]})
+        # With normalization, this should be well below 40
+        assert score < 40
+
+    def test_good_job_above_threshold(self):
+        """Job matching preferences scores above threshold."""
+        job = _make_job()
+        score, _ = self.agent._score_job(job, FULL_PREFERENCES, FULL_PROFILE)
+        assert score >= 40
 
 
 # ---------------------------------------------------------------------------
