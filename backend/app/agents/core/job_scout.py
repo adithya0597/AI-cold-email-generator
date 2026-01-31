@@ -10,6 +10,7 @@ Architecture: Extends BaseAgent (ADR-1 custom orchestrator).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 from uuid import uuid4
@@ -96,30 +97,34 @@ class JobScoutAgent(BaseAgent):
                 if score >= heuristic_threshold:
                     scored_jobs.append((job, score, rationale))
 
-            # 5b. LLM refinement for jobs passing pre-filter
+            # 5b. LLM refinement for jobs passing pre-filter (concurrent)
             if settings.LLM_SCORING_ENABLED and scored_jobs:
                 from app.services.job_scoring import score_job_with_llm
 
-                refined: list[tuple[Any, int, str]] = []
-                for job, h_score, h_rationale in scored_jobs:
-                    try:
-                        result = await score_job_with_llm(
-                            job, preferences, profile,
-                            user_id=user_id,
-                            heuristic_score=h_score,
-                        )
-                        if result.used_llm:
-                            refined.append((job, result.score, result.rationale))
-                        else:
-                            refined.append((job, h_score, h_rationale))
-                    except Exception as exc:
-                        logger.warning(
-                            "LLM scoring failed for job=%s: %s",
-                            getattr(job, "id", "?"),
-                            exc,
-                        )
-                        refined.append((job, h_score, h_rationale))
-                scored_jobs = refined
+                sem = asyncio.Semaphore(5)  # max 5 concurrent LLM calls
+
+                async def _refine(job: Any, h_score: int, h_rationale: str):
+                    async with sem:
+                        try:
+                            result = await score_job_with_llm(
+                                job, preferences, profile,
+                                user_id=user_id,
+                                heuristic_score=h_score,
+                            )
+                            if result.used_llm:
+                                return (job, result.score, result.rationale)
+                            return (job, h_score, h_rationale)
+                        except Exception as exc:
+                            logger.warning(
+                                "LLM scoring failed for job=%s: %s",
+                                getattr(job, "id", "?"),
+                                exc,
+                            )
+                            return (job, h_score, h_rationale)
+
+                scored_jobs = list(await asyncio.gather(
+                    *(_refine(j, s, r) for j, s, r in scored_jobs)
+                ))
 
             # 6b. Apply final threshold filter
             scored_jobs = [
@@ -275,8 +280,9 @@ class JobScoutAgent(BaseAgent):
         breakdown["company_size"] = (company_size_score, 10)
 
         raw_total = sum(s for s, _ in breakdown.values())
-        # Normalize from 0-110 range to 0-100
-        total = int(raw_total / 1.1)
+        max_possible = sum(m for _, m in breakdown.values())
+        # Normalize to 0-100 regardless of max_possible
+        total = int(raw_total * 100 / max_possible) if max_possible else 0
         rationale = self._build_rationale(breakdown, total)
         return total, rationale
 
@@ -498,7 +504,8 @@ class JobScoutAgent(BaseAgent):
         """
         if normalized_total is None:
             raw = sum(s for s, _ in breakdown.values())
-            normalized_total = int(raw / 1.1)
+            max_possible = sum(m for _, m in breakdown.values())
+            normalized_total = int(raw * 100 / max_possible) if max_possible else 0
         parts = [f"{cat} ({s}/{m})" for cat, (s, m) in breakdown.items()]
         return f"{normalized_total}% match: {', '.join(parts)}"
 

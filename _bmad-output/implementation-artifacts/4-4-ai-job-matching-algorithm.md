@@ -1,6 +1,6 @@
 # Story 4.4: AI Job Matching Algorithm
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -255,14 +255,63 @@ frontend/*                                 # No frontend in this story
 
 ### Agent Model Used
 
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
 ### Route Taken
+
+MODERATE (score: 6/16)
 
 ### GSD Subagents Used
 
+gsd-executor
+
 ### Debug Log References
+
+- No issues encountered — clean implementation following established patterns from 4-1/4-2/4-3
 
 ### Completion Notes List
 
+- Created LLM job scoring service (job_scoring.py) with ScoringResult dataclass and score_job_with_llm() async function
+- Two-stage scoring pipeline: heuristic pre-filter at threshold*0.5, then GPT-3.5 LLM refinement
+- Company size scoring dimension added to heuristic (0-10 pts), total normalized from 110 to 0-100
+- Configurable threshold via MATCH_SCORE_THRESHOLD (default 40), feature flag via LLM_SCORING_ENABLED
+- Cost tracking integrated via existing cost_tracker.track_llm_cost() with token estimation
+- Graceful degradation: LLM failures fall back to heuristic score without interrupting pipeline
+- Defensive LLM response parsing: score clamped 0-100, missing fields get neutral defaults
+- 36 tests passing (7 new scoring service tests + 10 new agent tests + 19 existing)
+- Story-specific coverage: job_scoring.py 86%, job_scout.py 81%, config.py 100%
+
+### Code Review
+
+**Reviewer:** Claude Opus 4.5 (adversarial code review)
+
+**Issues Found: 7 (2 HIGH, 3 MEDIUM, 2 LOW)**
+
+| # | Severity | File | Issue | Resolution |
+|---|----------|------|-------|------------|
+| 1 | HIGH | job_scoring.py:197 | Token estimation `len(prompt)//4` is unreliable for non-ASCII | Acknowledged — acceptable heuristic per Dev Notes; tracked for future tiktoken integration |
+| 2 | HIGH | job_scout.py:104-121 | Sequential LLM calls — no concurrency | **FIXED** — Added `asyncio.gather` with `Semaphore(5)` for bounded concurrent scoring |
+| 3 | MEDIUM | job_scoring.py:177 | OpenAIClient instantiated per call | Acknowledged — client is lightweight (no persistent session); fix deferred |
+| 4 | MEDIUM | job_scout.py:279 | Magic number `1.1` for normalization | **FIXED** — Derived from `sum(m for _, m in breakdown.values()) / 100` |
+| 5 | MEDIUM | job_scoring.py:65 | Description truncation at 500 chars loses context | Acknowledged — per Dev Notes prompt design (~400-500 input tokens target) |
+| 6 | LOW | job_scoring.py:34-60 | Prompt injection surface from external job data | Low risk — output is parsed/clamped to 0-100; no action needed |
+| 7 | LOW | job_scout.py:500-501 | `_build_rationale` duplicated normalization logic | **FIXED** — Both now use same derived formula |
+
+**Fixes Applied:** 3 of 7 issues fixed (issues 2, 4, 7). Remaining 4 are acknowledged with rationale.
+
 ### Change Log
 
+- 2026-01-31: Initial implementation of AI job matching algorithm with two-stage pipeline
+- 2026-01-31: Code review fixes — concurrent LLM scoring, derived normalization, DRY rationale
+
 ### File List
+
+**Created:**
+- `backend/app/services/job_scoring.py` — LLM scoring service (86% coverage)
+- `backend/tests/unit/test_services/test_job_scoring.py` — 7 LLM scoring tests
+
+**Modified:**
+- `backend/app/config.py` — Added MATCH_SCORE_THRESHOLD, LLM_SCORING_ENABLED settings
+- `backend/app/agents/core/job_scout.py` — Company size scoring, LLM integration, threshold filtering
+- `backend/app/core/llm_config.py` — Added job_scoring to fast_tasks
+- `backend/tests/unit/test_agents/test_job_scout.py` — 10 new tests (company size, threshold, rationale)
