@@ -8,25 +8,25 @@
 ## Current Position
 
 Phase: 2 of 9 (Onboarding + Preferences)
-Plan: 3 of 6 in current phase
+Plan: 4 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 02-03-PLAN (Resume Upload + Profile Extraction Backend)
+Last activity: 2026-01-31 -- Completed 02-04-PLAN (Preferences Backend + Shared Frontend Components)
 
-Progress: [██████████░] ~16%
+Progress: [███████████░] ~18%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: ~7 min
-- Total execution time: ~75 min
+- Total execution time: ~81 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
-| 2 | 3/6 | ~12 min | ~4 min |
+| 2 | 4/6 | ~18 min | ~5 min |
 
 ## Accumulated Context
 
@@ -72,6 +72,9 @@ Progress: [██████████░] ~16%
 - [02-03]: Resume parser uses OpenAI SDK v2 structured outputs (AsyncOpenAI.beta.chat.completions.parse) -- separate from legacy httpx client
 - [02-03]: ensure_user_exists shared between onboarding and preferences modules (defined in preferences.py, imported by onboarding.py)
 - [02-03]: LinkedIn extraction designed for graceful failure -- returns None on any error, never raises
+- [02-04]: ensure_user_exists also defined in preferences.py (parallel with Plan 03); extract to shared module when consolidating
+- [02-04]: Zustand stores use arrays (not Sets) for completedSteps -- Sets don't serialize to JSON
+- [02-04]: Autonomy level l0 treated as "not configured" in missing_sections to encourage active user choice
 
 ### Pending Todos
 
@@ -88,5 +91,5 @@ Progress: [██████████░] ~16%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-03-PLAN (Resume Upload + Profile Extraction Backend). Wave 2 in progress. Ready for 02-04 (Preferences Backend) if not already done, then Wave 3: 02-05 (Onboarding Frontend).
+Stopped at: Completed 02-04-PLAN (Preferences Backend + Shared Frontend Components). Wave 2 complete. Ready for Wave 3: 02-05 (Onboarding Frontend Flow).
 Resume file: None
