@@ -83,14 +83,50 @@ class JobScoutAgent(BaseAgent):
         async with AsyncSessionLocal() as session:
             stored_jobs = await upsert_jobs(raw_jobs, session)
 
-            # 5 & 6. Score and filter
+            # 5 & 6. Score and filter (heuristic pass)
+            from app.config import settings
+
+            heuristic_threshold = settings.MATCH_SCORE_THRESHOLD * 0.5  # pre-filter
+
             scored_jobs = []
             for job in stored_jobs:
                 if self._check_deal_breakers(job, preferences):
                     continue  # Deal-breaker violated, skip
                 score, rationale = self._score_job(job, preferences, profile)
-                if score > 0:
+                if score >= heuristic_threshold:
                     scored_jobs.append((job, score, rationale))
+
+            # 5b. LLM refinement for jobs passing pre-filter
+            if settings.LLM_SCORING_ENABLED and scored_jobs:
+                from app.services.job_scoring import score_job_with_llm
+
+                refined: list[tuple[Any, int, str]] = []
+                for job, h_score, h_rationale in scored_jobs:
+                    try:
+                        result = await score_job_with_llm(
+                            job, preferences, profile,
+                            user_id=user_id,
+                            heuristic_score=h_score,
+                        )
+                        if result.used_llm:
+                            refined.append((job, result.score, result.rationale))
+                        else:
+                            refined.append((job, h_score, h_rationale))
+                    except Exception as exc:
+                        logger.warning(
+                            "LLM scoring failed for job=%s: %s",
+                            getattr(job, "id", "?"),
+                            exc,
+                        )
+                        refined.append((job, h_score, h_rationale))
+                scored_jobs = refined
+
+            # 6b. Apply final threshold filter
+            scored_jobs = [
+                (job, score, rationale)
+                for job, score, rationale in scored_jobs
+                if score >= settings.MATCH_SCORE_THRESHOLD
+            ]
 
             # 7. Create matches
             matches_created = await self._create_matches(
