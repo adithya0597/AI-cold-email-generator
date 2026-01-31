@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 3 of 9 (Agent Framework Core)
-Plan: 4 of 8 in current phase
+Plan: 5 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 03-04-PLAN (Orchestrator + Langfuse Observability)
+Last activity: 2026-01-31 -- Completed 03-05-PLAN (Briefing Pipeline Backend)
 
-Progress: [██████████████████░░] ~30%
+Progress: [████████████████████░] ~33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
+- Total plans completed: 19
 - Average duration: ~6 min
-- Total execution time: ~113 min
+- Total execution time: ~120 min
 
 **By Phase:**
 
@@ -27,7 +27,7 @@ Progress: [██████████████████░░] ~30%
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
-| 3 | 4/8 | ~18 min | ~5 min |
+| 3 | 5/8 | ~25 min | ~5 min |
 
 ## Accumulated Context
 
@@ -98,6 +98,10 @@ Progress: [██████████████████░░] ~30%
 - [03-04]: Each Celery agent task creates explicit Langfuse trace (contextvars don't propagate across processes)
 - [03-04]: agent_apply limited to 1 retry (non-idempotent); other agent tasks get 2 retries
 - [03-04]: cleanup_expired_approvals runs every 6 hours via Celery beat_schedule
+- [03-05]: Static API routes (/latest, /settings) registered before dynamic /{briefing_id} to prevent FastAPI matching conflicts
+- [03-05]: No-LLM fallback: briefing built from raw data when OPENAI_API_KEY not configured
+- [03-05]: RedBeat lock disabled (redbeat_lock_key=None) for single-beat deployments
+- [03-05]: Timezone conversion at schedule creation time; DST correction via weekly cleanup task
 
 ### Pending Todos
 
@@ -114,5 +118,5 @@ Progress: [██████████████████░░] ~30%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-04-PLAN (Orchestrator + Langfuse Observability). Phase 3 plan 4/8 done. Wave 2 in progress (Plan 05 may be running in parallel).
+Stopped at: Completed 03-05-PLAN (Briefing Pipeline Backend). Phase 3 plan 5/8 done. Wave 2 complete. Ready for Wave 3 (Plans 06 + 07 in parallel).
 Resume file: None
