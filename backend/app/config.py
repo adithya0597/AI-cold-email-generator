@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # --- Email (Resend) ---
     RESEND_API_KEY: str = ""
 
+    # --- Analytics (PostHog) ---
+    POSTHOG_API_KEY: str = ""
+    POSTHOG_HOST: str = "https://us.i.posthog.com"
+
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:3000"
 
