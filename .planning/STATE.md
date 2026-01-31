@@ -50,6 +50,9 @@ Progress: [██████░░░░] ~8%
 - [01-04]: Legacy routes preserved alongside new /api/v1/ routes for backward compatibility
 - [01-04]: Rate limiter defaults all users to Pro tier (1000 req/hr) until user tier DB lookup is implemented
 - [01-04]: In-memory rate limit fallback when Redis unavailable (per-process, dev-only)
+- [01-05]: Celery tasks use lazy imports + asyncio.run() to bridge sync workers with async SQLAlchemy
+- [01-05]: Queue routing by naming convention: agent_* -> agents, briefing_* -> briefings, scrape_* -> scraping
+- [01-05]: Reliability settings: acks_late, prefetch=1, reject_on_worker_lost, soft_timeout=240s, hard_timeout=300s
 - [01-06]: AuthProvider gracefully degrades when VITE_CLERK_PUBLISHABLE_KEY is missing (renders children without auth wrapper)
 - [01-06]: Legacy routes (email, linkedin, author-styles, settings) remain public; only /dashboard is protected
 - [01-06]: Public api instance preserved for unauthenticated calls; useApiClient hook for authenticated calls
