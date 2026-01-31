@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, health, preferences, users, ws
+from app.api.v1 import admin, health, onboarding, preferences, users, ws
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -22,6 +22,7 @@ api_router.include_router(ws.router)
 
 # --- authenticated ---
 api_router.include_router(users.router)
+api_router.include_router(onboarding.router)
 api_router.include_router(preferences.router)
 
 # --- admin ---
