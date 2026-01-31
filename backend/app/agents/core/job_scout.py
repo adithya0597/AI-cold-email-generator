@@ -433,7 +433,10 @@ class JobScoutAgent(BaseAgent):
         scored_jobs: list[tuple[Any, int, str]],
         session: Any,
     ) -> int:
-        """Create Match records for scored jobs.
+        """Create Match records for scored jobs, skipping existing matches.
+
+        Checks for existing (user_id, job_id) pairs before inserting to
+        prevent duplicate matches on repeated agent runs.
 
         Args:
             user_id: User ID for the matches.
@@ -441,15 +444,32 @@ class JobScoutAgent(BaseAgent):
             session: AsyncSession for database operations.
 
         Returns:
-            Number of matches created.
+            Number of new matches created.
         """
+        from sqlalchemy import select
+
         from app.db.models import Match
 
         if not scored_jobs:
             return 0
 
+        # Fetch existing matches for this user to avoid duplicates
+        job_ids = [job.id for job, _, _ in scored_jobs]
+        result = await session.execute(
+            select(Match.job_id).where(
+                Match.user_id == user_id,
+                Match.job_id.in_(job_ids),
+            )
+        )
+        existing_job_ids = {row[0] for row in result.all()}
+
         count = 0
         for job, score, rationale in scored_jobs:
+            if job.id in existing_job_ids:
+                logger.debug(
+                    "Skipping existing match for user=%s job=%s", user_id, job.id
+                )
+                continue
             match = Match(
                 id=uuid4(),
                 user_id=user_id,
@@ -462,5 +482,6 @@ class JobScoutAgent(BaseAgent):
             count += 1
 
         await session.flush()
-        logger.info("Created %d matches for user=%s", count, user_id)
+        logger.info("Created %d new matches for user=%s (skipped %d existing)",
+                     count, user_id, len(existing_job_ids))
         return count

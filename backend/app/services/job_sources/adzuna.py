@@ -18,8 +18,11 @@ from app.services.job_sources.base import BaseJobSource, RawJob
 
 logger = logging.getLogger(__name__)
 
-# Adzuna API base URL (US jobs)
-ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs/us/search/1"
+# Adzuna API base URL template — {country} is a 2-letter ISO code
+ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs/{country}/search/1"
+
+# Default country code when none can be inferred from location
+ADZUNA_DEFAULT_COUNTRY = "us"
 
 
 class AdzunaSource(BaseJobSource):
@@ -32,10 +35,14 @@ class AdzunaSource(BaseJobSource):
         app_id: str | None = None,
         app_key: str | None = None,
         timeout: float = 30.0,
+        country: str = ADZUNA_DEFAULT_COUNTRY,
+        client: httpx.AsyncClient | None = None,
     ):
         self._app_id = app_id or settings.ADZUNA_APP_ID
         self._app_key = app_key or settings.ADZUNA_APP_KEY
         self._timeout = timeout
+        self._country = country
+        self._client = client
 
     async def search(
         self,
@@ -68,11 +75,17 @@ class AdzunaSource(BaseJobSource):
         if salary_min:
             params["salary_min"] = salary_min
 
+        url = ADZUNA_BASE_URL.format(country=self._country)
+
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.get(ADZUNA_BASE_URL, params=params)
+            client = self._client or httpx.AsyncClient(timeout=self._timeout)
+            try:
+                resp = await client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json()
+            finally:
+                if not self._client:
+                    await client.aclose()
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "Adzuna API HTTP error: %s %s", exc.response.status_code, exc

@@ -236,6 +236,10 @@ class TestExecute:
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
         mock_session.add = MagicMock()
+        # _create_matches queries existing matches; return empty result
+        mock_execute_result = MagicMock()
+        mock_execute_result.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_execute_result)
 
         # Create a mock module for app.db.engine since it can't be imported in test env
         mock_engine_module = MagicMock()

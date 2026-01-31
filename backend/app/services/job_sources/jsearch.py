@@ -27,9 +27,15 @@ class JSearchSource(BaseJobSource):
 
     source_name = "jsearch"
 
-    def __init__(self, api_key: str | None = None, timeout: float = 30.0):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        timeout: float = 30.0,
+        client: httpx.AsyncClient | None = None,
+    ):
         self._api_key = api_key or settings.RAPIDAPI_KEY
         self._timeout = timeout
+        self._client = client
 
     async def search(
         self,
@@ -67,12 +73,16 @@ class JSearchSource(BaseJobSource):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
+            client = self._client or httpx.AsyncClient(timeout=self._timeout)
+            try:
                 resp = await client.get(
                     JSEARCH_BASE_URL, params=params, headers=headers
                 )
                 resp.raise_for_status()
                 data = resp.json()
+            finally:
+                if not self._client:
+                    await client.aclose()
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "JSearch API HTTP error: %s %s", exc.response.status_code, exc

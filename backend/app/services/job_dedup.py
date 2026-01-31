@@ -82,6 +82,36 @@ async def upsert_jobs(raw_jobs: list[RawJob], session: Any) -> list[Any]:
             if job.url:
                 existing_by_url[normalize_text(job.url)] = job
 
+    # Check existing jobs by content-based dedup (title+company+location)
+    # For jobs without URL matches, query DB by title+company combinations
+    existing_by_content: dict[str, Any] = {}
+    content_candidates = [
+        rj for rj in raw_jobs
+        if not (rj.url and normalize_text(rj.url) in existing_by_url)
+    ]
+    if content_candidates:
+        # Query jobs matching any of the candidate titles+companies
+        titles = list({rj.title for rj in content_candidates if rj.title})
+        companies = list({rj.company for rj in content_candidates if rj.company})
+        if titles and companies:
+            from sqlalchemy import and_
+
+            result = await session.execute(
+                select(Job).where(
+                    and_(Job.title.in_(titles), Job.company.in_(companies))
+                )
+            )
+            for job in result.scalars().all():
+                # Build content key for the existing DB job
+                content_key = hashlib.sha256(
+                    "|".join([
+                        normalize_text(job.title),
+                        normalize_text(job.company),
+                        normalize_text(getattr(job, "location", None)),
+                    ]).encode()
+                ).hexdigest()
+                existing_by_content[content_key] = job
+
     # Process each raw job
     result_jobs: list[Any] = []
     seen_keys: set[str] = set()
@@ -97,6 +127,17 @@ async def upsert_jobs(raw_jobs: list[RawJob], session: Any) -> list[Any]:
         # Check if exists by URL
         norm_url = normalize_text(rj.url) if rj.url else None
         existing = existing_by_url.get(norm_url) if norm_url else None
+
+        # If not found by URL, check by content-based key
+        if not existing:
+            content_key = hashlib.sha256(
+                "|".join([
+                    normalize_text(rj.title),
+                    normalize_text(rj.company),
+                    normalize_text(rj.location),
+                ]).encode()
+            ).hexdigest()
+            existing = existing_by_content.get(content_key)
 
         if existing:
             # Update existing job with fresh data
@@ -139,9 +180,9 @@ def _update_job(job: Any, raw: RawJob) -> None:
     """Update an existing Job ORM instance with fresh data from a RawJob."""
     if raw.description and not job.description:
         job.description = raw.description
-    if raw.salary_min:
+    if raw.salary_min is not None:
         job.salary_min = raw.salary_min
-    if raw.salary_max:
+    if raw.salary_max is not None:
         job.salary_max = raw.salary_max
     if raw.employment_type:
         job.employment_type = raw.employment_type
