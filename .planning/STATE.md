@@ -3,29 +3,30 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 1 - Foundation Modernization (COMPLETE)
+**Current focus:** Phase 2 - Onboarding + Preferences (In Progress)
 
 ## Current Position
 
-Phase: 1 of 9 (Foundation Modernization)
-Plan: 8 of 8 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 -- Completed 01-08-PLAN (CI/CD Pipeline + Remaining Infrastructure Stories)
+Phase: 2 of 9 (Onboarding + Preferences)
+Plan: 1 of 6 in current phase
+Status: In progress
+Last activity: 2026-01-31 -- Completed 02-01-PLAN (Database Schema + Backend Models)
 
-Progress: [████████░░] ~10%
+Progress: [█████████░] ~12%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~8 min
-- Total execution time: ~63 min
+- Total plans completed: 9
+- Average duration: ~7 min
+- Total execution time: ~68 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
+| 2 | 1/6 | ~5 min | ~5 min |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Progress: [████████░░] ~10%
 - [01-08]: WebSocket auth uses query parameter token; full JWT validation is TODO
 - [01-08]: GDPR endpoints use raw SQL text() for resilience when tables do not yet exist
 - [01-08]: Storage service returns placeholders when Supabase is not configured
+- [02-01]: Text columns (not PG Enum) for onboarding_status, work_arrangement, autonomy_level -- avoids ALTER TYPE migrations
+- [02-01]: Hybrid relational + JSONB schema for user_preferences -- deal-breakers get dedicated indexed columns, evolving prefs go in JSONB
+- [02-01]: Migration 0002 written manually (no DB connection) -- review when first applied
 
 ### Pending Todos
 
@@ -80,5 +84,5 @@ Progress: [████████░░] ~10%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed Phase 1 (all 8 plans). Ready for Phase 2 planning.
+Stopped at: Completed 02-01-PLAN (Database Schema + Backend Models). Ready for 02-02 (Analytics) or 02-03/02-04 (Wave 2).
 Resume file: None
