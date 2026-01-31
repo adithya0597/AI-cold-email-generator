@@ -247,6 +247,16 @@ class Job(TimestampMixin, Base):
         default=H1BSponsorStatus.UNKNOWN,
     )
 
+    # Phase 4: additional job metadata columns
+    location = Column(Text, nullable=True)
+    salary_min = Column(Integer, nullable=True)
+    salary_max = Column(Integer, nullable=True)
+    employment_type = Column(Text, nullable=True)
+    remote = Column(Boolean, nullable=True, default=False)
+    source_id = Column(Text, nullable=True)  # External API job ID
+    raw_data = Column(JSONB, nullable=True)  # Full API response
+    posted_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationships
     applications = relationship("Application", back_populates="job")
     matches = relationship("Match", back_populates="job")
