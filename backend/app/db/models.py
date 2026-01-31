@@ -74,6 +74,44 @@ class AgentType(str, enum.Enum):
     FOLLOW_UP = "follow_up"
     INTERVIEW_INTEL = "interview_intel"
     NETWORK = "network"
+    BRIEFING = "briefing"
+
+
+# ============================================================
+# Text constant classes (not PG Enum -- Phase 2 convention)
+# Used for columns stored as Text to avoid ALTER TYPE migrations
+# ============================================================
+
+
+class ApprovalStatus:
+    """Status values for approval_queue items. Stored as Text columns."""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    PAUSED = "paused"
+
+
+class BrakeState:
+    """Brake state values. Stored as Text columns / Redis hashes."""
+    RUNNING = "running"
+    PAUSING = "pausing"
+    PAUSED = "paused"
+    PARTIAL = "partial"
+    RESUMING = "resuming"
+
+
+class ActivitySeverity:
+    """Severity levels for agent activity feed. Stored as Text columns."""
+    INFO = "info"
+    WARNING = "warning"
+    ACTION_REQUIRED = "action_required"
+
+
+class BriefingType:
+    """Briefing type values. Stored as Text columns."""
+    FULL = "full"
+    LITE = "lite"
 
 
 class H1BSponsorStatus(str, enum.Enum):
@@ -306,6 +344,9 @@ class AgentAction(SoftDeleteMixin, TimestampMixin, Base):
 
 class AgentOutput(TimestampMixin, Base):
     __tablename__ = "agent_outputs"
+    __table_args__ = (
+        Index("ix_agent_outputs_user_created", "user_id", "created_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     agent_type = Column(
@@ -314,11 +355,94 @@ class AgentOutput(TimestampMixin, Base):
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    schema_version = Column(Integer, nullable=False, default=1)
+    task_id = Column(Text, nullable=True)  # Celery task ID
     output = Column(JSONB, nullable=False)
+    rationale = Column(Text, nullable=True)
+    confidence = Column(Numeric(3, 2), nullable=True)
+    schema_version = Column(Integer, nullable=False, default=1)
 
     # Relationships
     user = relationship("User", back_populates="agent_outputs")
+
+
+class ApprovalQueueItem(SoftDeleteMixin, TimestampMixin, Base):
+    """Pending agent actions awaiting L2 user approval."""
+
+    __tablename__ = "approval_queue"
+    __table_args__ = (
+        Index("ix_approval_queue_user_status", "user_id", "status"),
+        Index("ix_approval_queue_expires", "expires_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    agent_type = Column(Text, nullable=False)
+    action_name = Column(Text, nullable=False)
+    payload = Column(JSONB, nullable=False)  # Serialized action context
+    status = Column(Text, nullable=False, server_default="pending")
+    rationale = Column(Text, nullable=True)  # Agent's rationale for the action
+    confidence = Column(Numeric(3, 2), nullable=True)
+    user_decision_reason = Column(Text, nullable=True)  # Why user approved/rejected
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Relationships
+    user = relationship("User", backref="approval_items")
+
+
+class Briefing(TimestampMixin, Base):
+    """Daily briefing records."""
+
+    __tablename__ = "briefings"
+    __table_args__ = (
+        Index("ix_briefings_user_generated", "user_id", "generated_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    content = Column(JSONB, nullable=False)  # Structured briefing data
+    briefing_type = Column(Text, nullable=False, server_default="full")  # "full" | "lite"
+    generated_at = Column(DateTime(timezone=True), nullable=False)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    delivery_channels = Column(ARRAY(Text), server_default="{}")  # ["in_app", "email"]
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    schema_version = Column(Integer, nullable=False, default=1)
+
+    # Relationships
+    user = relationship("User", backref="briefings")
+
+
+class AgentActivity(TimestampMixin, Base):
+    """Agent activity feed persistence for real-time and historical display."""
+
+    __tablename__ = "agent_activities"
+    __table_args__ = (
+        Index("ix_agent_activities_user_created", "user_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_type = Column(Text, nullable=False)
+    agent_type = Column(Text, nullable=True)
+    title = Column(Text, nullable=False)
+    severity = Column(Text, nullable=False, server_default="info")  # info | warning | action_required
+    data = Column(JSONB, server_default="{}")
+    # Note: created_at comes from TimestampMixin
+
+    # Relationships
+    user = relationship("User", backref="agent_activities")
 
 
 class UserPreference(SoftDeleteMixin, TimestampMixin, Base):
@@ -384,6 +508,14 @@ class UserPreference(SoftDeleteMixin, TimestampMixin, Base):
 
     # --- Flexible Extras (JSONB for evolving preferences) ---
     extra_preferences = Column(JSONB, server_default="{}")
+
+    # --- Briefing Configuration ---
+    briefing_hour = Column(Integer, nullable=False, server_default="8")  # 0-23, UTC
+    briefing_minute = Column(Integer, nullable=False, server_default="0")
+    briefing_timezone = Column(Text, nullable=False, server_default="UTC")
+    briefing_channels = Column(
+        ARRAY(Text), server_default="{in_app,email}"
+    )  # ["in_app", "email"]
 
     # Relationships
     user = relationship("User", back_populates="preferences")
