@@ -8,25 +8,25 @@
 ## Current Position
 
 Phase: 2 of 9 (Onboarding + Preferences)
-Plan: 4 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 02-04-PLAN (Preferences Backend + Shared Frontend Components)
+Last activity: 2026-01-31 -- Completed 02-05-PLAN (Onboarding Frontend Flow)
 
-Progress: [███████████░] ~18%
+Progress: [████████████░] ~20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: ~7 min
-- Total execution time: ~81 min
+- Total execution time: ~87 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
-| 2 | 4/6 | ~18 min | ~5 min |
+| 2 | 5/6 | ~24 min | ~5 min |
 
 ## Accumulated Context
 
@@ -75,6 +75,8 @@ Progress: [███████████░] ~18%
 - [02-04]: ensure_user_exists also defined in preferences.py (parallel with Plan 03); extract to shared module when consolidating
 - [02-04]: Zustand stores use arrays (not Sets) for completedSteps -- Sets don't serialize to JSON
 - [02-04]: Autonomy level l0 treated as "not configured" in missing_sections to encourage active user choice
+- [02-05]: Each onboarding step manages its own navigation buttons; WizardShell used for step indicator only
+- [02-05]: SkillTagInput is a local component in ProfileReview (not extracted to shared/) -- specific to onboarding
 
 ### Pending Todos
 
@@ -91,5 +93,5 @@ Progress: [███████████░] ~18%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 02-04-PLAN (Preferences Backend + Shared Frontend Components). Wave 2 complete. Ready for Wave 3: 02-05 (Onboarding Frontend Flow).
+Stopped at: Completed 02-05-PLAN (Onboarding Frontend Flow). Wave 3 complete. Ready for Wave 4: 02-06 (Preference Wizard Frontend + Integration Wiring).
 Resume file: None
