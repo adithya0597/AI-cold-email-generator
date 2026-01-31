@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 3 of 9 (Agent Framework Core)
-Plan: 5 of 8 in current phase
+Plan: 6 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 03-05-PLAN (Briefing Pipeline Backend)
+Last activity: 2026-01-31 -- Completed 03-06-PLAN (Emergency Brake Frontend + Activity Feed)
 
-Progress: [████████████████████░] ~33%
+Progress: [█████████████████████░] ~35%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
+- Total plans completed: 20
 - Average duration: ~6 min
-- Total execution time: ~120 min
+- Total execution time: ~125 min
 
 **By Phase:**
 
@@ -27,7 +27,7 @@ Progress: [████████████████████░] ~33%
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
-| 3 | 5/8 | ~25 min | ~5 min |
+| 3 | 6/8 | ~30 min | ~5 min |
 
 ## Accumulated Context
 
@@ -102,6 +102,9 @@ Progress: [████████████████████░] ~33%
 - [03-05]: No-LLM fallback: briefing built from raw data when OPENAI_API_KEY not configured
 - [03-05]: RedBeat lock disabled (redbeat_lock_key=None) for single-beat deployments
 - [03-05]: Timezone conversion at schedule creation time; DST correction via weekly cleanup task
+- [03-06]: No confirmation dialog on brake activation -- speed critical per Story 3-6 AC
+- [03-06]: EmergencyBrake renders only for signed-in users; public pages unaffected
+- [03-06]: WebSocket auto-reconnect with 3-second delay; polling only during transitional states (5s interval)
 
 ### Pending Todos
 
@@ -118,5 +121,5 @@ Progress: [████████████████████░] ~33%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-05-PLAN (Briefing Pipeline Backend). Phase 3 plan 5/8 done. Wave 2 complete. Ready for Wave 3 (Plans 06 + 07 in parallel).
+Stopped at: Completed 03-06-PLAN (Emergency Brake Frontend + Activity Feed). Phase 3 plan 6/8 done. Wave 3 in progress (Plan 07 may run in parallel). Ready for Plan 08 (integration tests) after Plan 07 completes.
 Resume file: None
