@@ -8,24 +8,24 @@
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 4 of 8 in current phase
-Status: In progress (Wave 2 complete)
-Last activity: 2026-01-31 -- Completed 01-04-PLAN (API Foundation + Clerk Auth Backend)
+Plan: 6 of 8 in current phase
+Status: In progress (Wave 3 - Plan 06 complete)
+Last activity: 2026-01-31 -- Completed 01-06-PLAN (Frontend Auth - Clerk React + Protected Routes)
 
-Progress: [████░░░░░░] ~6%
+Progress: [██████░░░░] ~8%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: ~10 min
-- Total execution time: ~40 min
+- Total plans completed: 6
+- Average duration: ~8 min
+- Total execution time: ~48 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 4/8 | ~40 min | ~10 min |
+| 1 | 6/8 | ~48 min | ~8 min |
 
 ## Accumulated Context
 
@@ -50,6 +50,9 @@ Progress: [████░░░░░░] ~6%
 - [01-04]: Legacy routes preserved alongside new /api/v1/ routes for backward compatibility
 - [01-04]: Rate limiter defaults all users to Pro tier (1000 req/hr) until user tier DB lookup is implemented
 - [01-04]: In-memory rate limit fallback when Redis unavailable (per-process, dev-only)
+- [01-06]: AuthProvider gracefully degrades when VITE_CLERK_PUBLISHABLE_KEY is missing (renders children without auth wrapper)
+- [01-06]: Legacy routes (email, linkedin, author-styles, settings) remain public; only /dashboard is protected
+- [01-06]: Public api instance preserved for unauthenticated calls; useApiClient hook for authenticated calls
 
 ### Pending Todos
 
@@ -66,5 +69,5 @@ Progress: [████░░░░░░] ~6%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-04-PLAN (API Foundation + Clerk Auth Backend)
+Stopped at: Completed 01-06-PLAN (Frontend Auth - Clerk React + Protected Routes)
 Resume file: None
