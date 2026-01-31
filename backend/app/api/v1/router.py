@@ -10,12 +10,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, health, users
+from app.api.v1 import admin, health, users, ws
 
 api_router = APIRouter(prefix="/api/v1")
 
 # --- public ---
 api_router.include_router(health.router)
+
+# --- websocket ---
+api_router.include_router(ws.router)
 
 # --- authenticated ---
 api_router.include_router(users.router)
