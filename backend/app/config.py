@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     POSTHOG_API_KEY: str = ""
     POSTHOG_HOST: str = "https://us.i.posthog.com"
 
+    # --- Job Board Aggregator APIs ---
+    RAPIDAPI_KEY: str = ""
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
+
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:3000"
 
