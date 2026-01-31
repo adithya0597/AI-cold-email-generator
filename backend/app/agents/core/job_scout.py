@@ -162,11 +162,18 @@ class JobScoutAgent(BaseAgent):
         self, queries: list[dict[str, Any]], preferences: dict
     ) -> list[Any]:
         """Fetch jobs from all sources for all queries."""
+        from app.config import settings
         from app.services.job_sources.aggregator import JobAggregator
         from app.services.job_sources.adzuna import AdzunaSource
+        from app.services.job_sources.indeed import IndeedSource
         from app.services.job_sources.jsearch import JSearchSource
+        from app.services.job_sources.linkedin import LinkedInSource
 
         sources = [JSearchSource(), AdzunaSource()]
+        if settings.INDEED_RAPIDAPI_HOST:
+            sources.append(IndeedSource())
+        if settings.LINKEDIN_RAPIDAPI_HOST:
+            sources.append(LinkedInSource())
         aggregator = JobAggregator(sources=sources)
 
         all_jobs = []
@@ -193,12 +200,13 @@ class JobScoutAgent(BaseAgent):
     ) -> tuple[int, str]:
         """Score a job against user preferences.
 
-        Scoring breakdown (0-100):
+        Scoring breakdown (raw 0-110, normalized to 0-100):
             - Title match: 0-25 pts
             - Location match: 0-20 pts
             - Salary match: 0-20 pts
             - Skills overlap: 0-20 pts
             - Seniority match: 0-15 pts
+            - Company size: 0-10 pts
 
         Returns:
             Tuple of (total_score, rationale_string).
@@ -226,8 +234,14 @@ class JobScoutAgent(BaseAgent):
         seniority_score = self._score_seniority(job, preferences)
         breakdown["seniority"] = (seniority_score, 15)
 
-        total = sum(s for s, _ in breakdown.values())
-        rationale = self._build_rationale(breakdown)
+        # Company size (0-10)
+        company_size_score = self._score_company_size(job, preferences)
+        breakdown["company_size"] = (company_size_score, 10)
+
+        raw_total = sum(s for s, _ in breakdown.values())
+        # Normalize from 0-110 range to 0-100
+        total = int(raw_total / 1.1)
+        rationale = self._build_rationale(breakdown, total)
         return total, rationale
 
     def _score_title(self, job: Any, preferences: dict) -> int:
@@ -356,6 +370,31 @@ class JobScoutAgent(BaseAgent):
 
         return 3  # No match
 
+    def _score_company_size(self, job: Any, preferences: dict) -> int:
+        """Score company size preference match (0-10)."""
+        min_company_size = preferences.get("min_company_size")
+        if min_company_size is None:
+            return 5  # No preference, neutral
+
+        # Extract company size from raw_data (various API key names)
+        raw_data = getattr(job, "raw_data", None) or {}
+        company_size = None
+        for key in ("companySize", "company_size", "employerSize", "employer_size"):
+            val = raw_data.get(key)
+            if val is not None:
+                try:
+                    company_size = int(val)
+                except (ValueError, TypeError):
+                    continue
+                break
+
+        if company_size is None:
+            return 5  # Unknown company size, neutral
+
+        if company_size >= min_company_size:
+            return 10
+        return 0
+
     # ------------------------------------------------------------------
     # Deal-breaker checking
     # ------------------------------------------------------------------
@@ -413,15 +452,19 @@ class JobScoutAgent(BaseAgent):
     # Rationale building
     # ------------------------------------------------------------------
 
-    def _build_rationale(self, breakdown: dict[str, tuple[int, int]]) -> str:
+    def _build_rationale(
+        self, breakdown: dict[str, tuple[int, int]], normalized_total: int | None = None
+    ) -> str:
         """Build a human-readable rationale string from score breakdown.
 
         Example: "78% match: title (20/25), location (20/20), salary (18/20),
-                  skills (10/20), seniority (10/15)"
+                  skills (10/20), seniority (10/15), company_size (5/10)"
         """
-        total = sum(s for s, _ in breakdown.values())
+        if normalized_total is None:
+            raw = sum(s for s, _ in breakdown.values())
+            normalized_total = int(raw / 1.1)
         parts = [f"{cat} ({s}/{m})" for cat, (s, m) in breakdown.items()]
-        return f"{total}% match: {', '.join(parts)}"
+        return f"{normalized_total}% match: {', '.join(parts)}"
 
     # ------------------------------------------------------------------
     # Match creation
