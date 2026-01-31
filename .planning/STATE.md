@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 3 of 9 (Agent Framework Core)
-Plan: 2 of 8 in current phase
+Plan: 3 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 03-02-PLAN (Database Schema + Agent Models)
+Last activity: 2026-01-31 -- Completed 03-03-PLAN (BaseAgent + Tier Enforcement + Brake Module)
 
-Progress: [████████████████░░░░] ~26%
+Progress: [████████████████░░░░] ~28%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: ~7 min
-- Total execution time: ~104 min
+- Total plans completed: 17
+- Average duration: ~6 min
+- Total execution time: ~109 min
 
 **By Phase:**
 
@@ -27,7 +27,7 @@ Progress: [████████████████░░░░] ~26%
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
-| 3 | 2/8 | ~9 min | ~5 min |
+| 3 | 3/8 | ~14 min | ~5 min |
 
 ## Accumulated Context
 
@@ -88,6 +88,10 @@ Progress: [████████████████░░░░] ~26%
 - [03-02]: Text constant classes (not PG Enum) for ApprovalStatus, BrakeState, ActivitySeverity, BriefingType -- avoids ALTER TYPE migrations
 - [03-02]: No langgraph_thread_id columns in approval_queue -- ADR-1 custom orchestrator decision
 - [03-02]: Migration 0003 written manually (no DB connection) -- review when first applied
+- [03-03]: BaseAgent.run() raises BrakeActive exception rather than returning blocked output -- callers must handle
+- [03-03]: Brake state uses dual Redis structures: simple flag (paused:{user_id}) for O(1) checks + hash (brake_state:{user_id}) for full state machine
+- [03-03]: verify_brake_completion uses Celery inspect API best-effort -- assumes stopped if broker unreachable
+- [03-03]: AutonomyGate returns plain string literals not enums for simpler caller pattern matching
 
 ### Pending Todos
 
@@ -104,5 +108,5 @@ Progress: [████████████████░░░░] ~26%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-02-PLAN (Database Schema + Agent Models). Phase 3 plan 2/8 done. Wave 1 in progress (Plan 03 can proceed in parallel).
+Stopped at: Completed 03-03-PLAN (BaseAgent + Tier Enforcement + Brake Module). Phase 3 plan 3/8 done. Wave 1 complete. Ready for Wave 2 (Plans 04 + 05 in parallel).
 Resume file: None
