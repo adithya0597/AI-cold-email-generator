@@ -3,29 +3,29 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 1 - Foundation Modernization
+**Current focus:** Phase 1 - Foundation Modernization (COMPLETE)
 
 ## Current Position
 
 Phase: 1 of 9 (Foundation Modernization)
-Plan: 7 of 8 in current phase
-Status: In progress (Wave 4 - Plan 07 complete)
-Last activity: 2026-01-31 -- Completed 01-07-PLAN (Observability Stack - OTel + Sentry + LLM Cost Tracking)
+Plan: 8 of 8 in current phase
+Status: Phase complete
+Last activity: 2026-01-31 -- Completed 01-08-PLAN (CI/CD Pipeline + Remaining Infrastructure Stories)
 
-Progress: [███████░░░] ~9%
+Progress: [████████░░] ~10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: ~8 min
-- Total execution time: ~53 min
+- Total execution time: ~63 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 7/8 | ~53 min | ~8 min |
+| 1 | 8/8 | ~63 min | ~8 min |
 
 ## Accumulated Context
 
@@ -60,6 +60,10 @@ Progress: [███████░░░] ~9%
 - [01-07]: Cost tracking is fire-and-forget (never breaks hot path) -- exceptions logged but swallowed
 - [01-07]: Budget alert at 80% of $6/month via Redis pub/sub channel alerts:cost:{user_id}
 - [01-07]: Admin endpoints under /api/v1/admin/ prefix
+- [01-08]: Transactional email (transactional_email.py) separate from legacy cold-email generation (email_service.py)
+- [01-08]: WebSocket auth uses query parameter token; full JWT validation is TODO
+- [01-08]: GDPR endpoints use raw SQL text() for resilience when tables do not yet exist
+- [01-08]: Storage service returns placeholders when Supabase is not configured
 
 ### Pending Todos
 
@@ -76,5 +80,5 @@ Progress: [███████░░░] ~9%
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 01-07-PLAN (Observability Stack - OTel + Sentry + LLM Cost Tracking)
+Stopped at: Completed Phase 1 (all 8 plans). Ready for Phase 2 planning.
 Resume file: None
