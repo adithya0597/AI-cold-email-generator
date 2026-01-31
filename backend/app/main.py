@@ -20,6 +20,7 @@ from datetime import datetime
 from app.config import settings
 from app.api.v1.router import api_router
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.observability.tracing import setup_observability
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +57,9 @@ def create_app() -> FastAPI:
 
     # ---- Versioned API router ------------------------------------------
     application.include_router(api_router)
+
+    # ---- Observability (OTel tracing + Sentry) -------------------------
+    setup_observability(application)
 
     # ---- Global exception handlers -------------------------------------
     _register_exception_handlers(application)
