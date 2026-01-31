@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers, FiLogIn } from 'react-icons/fi';
 
+import EmergencyBrake from './components/EmergencyBrake';
 import ColdEmailGenerator from './components/ColdEmailGenerator';
 import LinkedInPostGenerator from './components/LinkedInPostGenerator';
 import AuthorStylesManager from './components/AuthorStylesManager';
@@ -16,6 +17,9 @@ import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import Preferences from './pages/Preferences';
+import BriefingHistory from './pages/BriefingHistory';
+import BriefingDetail from './components/briefing/BriefingDetail';
+import BriefingSettingsPage from './pages/BriefingSettings';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 
@@ -164,6 +168,7 @@ function App() {
                   </span>
                 </div>
                 <SignedIn>
+                  <EmergencyBrake />
                   <UserButton afterSignOutUrl="/" />
                 </SignedIn>
                 <SignedOut>
@@ -302,6 +307,30 @@ function App() {
                   <OnboardingGuard>
                     <Dashboard />
                   </OnboardingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/briefings"
+              element={
+                <ProtectedRoute>
+                  <BriefingHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/briefings/settings"
+              element={
+                <ProtectedRoute>
+                  <BriefingSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/briefings/:briefingId"
+              element={
+                <ProtectedRoute>
+                  <BriefingDetail />
                 </ProtectedRoute>
               }
             />

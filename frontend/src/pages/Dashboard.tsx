@@ -1,7 +1,17 @@
 import { useUser, UserButton } from '@clerk/clerk-react';
+import BriefingCard, {
+  BriefingEmptyState,
+} from '../components/briefing/BriefingCard';
+import { useLatestBriefing } from '../services/briefings';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
+  const userId = user?.id;
+
+  const {
+    data: latestBriefing,
+    isLoading: briefingLoading,
+  } = useLatestBriefing(userId);
 
   if (!isLoaded) {
     return (
@@ -11,8 +21,31 @@ export default function Dashboard() {
     );
   }
 
+  const userName =
+    user?.firstName ||
+    user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
+    undefined;
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Latest Briefing (hero) */}
+      {briefingLoading ? (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6 animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-3" />
+          <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+          <div className="h-4 bg-gray-200 rounded w-1/2" />
+        </div>
+      ) : latestBriefing ? (
+        <BriefingCard
+          briefing={latestBriefing}
+          userName={userName}
+          userId={userId!}
+        />
+      ) : (
+        <BriefingEmptyState userName={userName} />
+      )}
+
+      {/* Stats overview */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
