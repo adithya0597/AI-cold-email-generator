@@ -3,23 +3,23 @@
 ## Project Reference
 
 **Core value:** "Your AI Career Agent that works 24/7" -- multi-agent platform that automates job search, resume tailoring, application submission, and pipeline tracking with tiered autonomy (L0-L3).
-**Current focus:** Phase 3 - Agent Framework Core (In Progress)
+**Current focus:** Phase 3 - Agent Framework Core (COMPLETE)
 
 ## Current Position
 
 Phase: 3 of 9 (Agent Framework Core)
-Plan: 7 of 8 in current phase
-Status: In progress
-Last activity: 2026-01-31 -- Completed 03-07-PLAN (Briefing Frontend)
+Plan: 8 of 8 in current phase
+Status: Phase complete
+Last activity: 2026-01-31 -- Completed 03-08-PLAN (Integration Tests + Phase Verification)
 
-Progress: [██████████████████████░] ~37%
+Progress: [████████████████████████░] ~39%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: ~6 min
-- Total execution time: ~131 min
+- Total execution time: ~135 min
 
 **By Phase:**
 
@@ -27,7 +27,7 @@ Progress: [██████████████████████░
 |-------|-------|-------|----------|
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
-| 3 | 7/8 | ~36 min | ~5 min |
+| 3 | 8/8 | ~40 min | ~5 min |
 
 ## Accumulated Context
 
@@ -109,6 +109,9 @@ Progress: [██████████████████████░
 - [03-07]: 12-hour AM/PM picker on frontend, converted to 24h for API -- user-friendly display
 - [03-07]: Browser timezone auto-detected via Intl.DateTimeFormat, editable from curated list
 - [03-07]: Lite briefing rendered with amber styling and cached-data messaging
+- [03-08]: VCR cassette infra with record_mode=none; switch to once when recording against live API
+- [03-08]: Integration tests marked @pytest.mark.integration with manual verification docs
+- [03-08]: All agent tests use mocked Redis/DB; no real connections needed
 
 ### Pending Todos
 
@@ -125,5 +128,5 @@ Progress: [██████████████████████░
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 03-07-PLAN (Briefing Frontend). Phase 3 plan 7/8 done. Wave 3 complete. Ready for Wave 4 (Plan 08: Integration Tests + Phase Verification).
+Stopped at: Completed 03-08-PLAN (Integration Tests + Phase Verification). Phase 3 COMPLETE (8/8 plans). All 5 success criteria verified by tests. Ready for Phase 4: Job Discovery.
 Resume file: None
