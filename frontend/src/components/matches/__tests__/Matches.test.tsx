@@ -39,6 +39,7 @@ vi.mock('react-router-dom', () => ({
 const mockMutate = vi.fn();
 vi.mock('../../../services/matches', () => ({
   useMatches: vi.fn(),
+  useTopPick: () => ({ data: null, isLoading: false, isError: false }),
   useUpdateMatchStatus: () => ({
     mutate: mockMutate,
     isPending: false,
