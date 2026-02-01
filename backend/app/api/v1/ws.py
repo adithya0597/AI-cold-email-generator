@@ -72,10 +72,15 @@ async def agent_websocket(
         await websocket.close(code=4401, reason="Authentication required")
         return
 
-    # In production, validate the JWT here.  For now we accept any
-    # non-empty token so the WebSocket infra can be tested end-to-end
-    # without a running Clerk instance.
-    # TODO: Validate JWT via app.auth.clerk once WebSocket auth util exists.
+    from app.auth.ws_auth import validate_ws_token
+    from app.config import settings
+
+    validated_user = await validate_ws_token(token)
+    if validated_user is None and settings.CLERK_DOMAIN:
+        # In production with CLERK_DOMAIN set, reject invalid tokens
+        await websocket.close(code=4401, reason="Invalid or expired token")
+        return
+    # In dev without CLERK_DOMAIN, fall through with the URL user_id
 
     await websocket.accept()
     logger.info("WebSocket connected for user %s", user_id)
