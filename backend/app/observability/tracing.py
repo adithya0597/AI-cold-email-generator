@@ -29,7 +29,11 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
+try:
+    from opentelemetry.instrumentation.celery import CeleryInstrumentor
+except ImportError:  # pragma: no cover
+    CeleryInstrumentor = None  # type: ignore[assignment,misc]
 
 from app.config import settings
 
@@ -136,11 +140,14 @@ def _init_opentelemetry(app: "FastAPI") -> str:
     )
 
     # --- Auto-instrument Celery ---
-    try:
-        CeleryInstrumentor().instrument(tracer_provider=provider)
-    except Exception:
-        # Celery may not be importable in every process (e.g. web-only deploys)
-        logger.debug("Celery instrumentation skipped (Celery not available)")
+    if CeleryInstrumentor is not None:
+        try:
+            CeleryInstrumentor().instrument(tracer_provider=provider)
+        except Exception:
+            # Celery may not be importable in every process (e.g. web-only deploys)
+            logger.debug("Celery instrumentation skipped (Celery not available)")
+    else:
+        logger.debug("Celery instrumentation skipped (package not installed)")
 
     return exporter_label
 
