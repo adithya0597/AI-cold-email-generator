@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # --- Email (Resend) ---
     RESEND_API_KEY: str = ""
+    RESEND_WEBHOOK_SECRET: str = ""
 
     # --- Analytics (PostHog) ---
     POSTHOG_API_KEY: str = ""
