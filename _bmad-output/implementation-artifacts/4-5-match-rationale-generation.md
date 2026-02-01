@@ -1,6 +1,6 @@
 # Story 4.5: Match Rationale Generation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -245,12 +245,41 @@ frontend/*                                  # No frontend in this story
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
+### Route Taken
+
+MODERATE (score: 5/16)
+
+### GSD Subagents Used
+
+gsd-executor x3 (Wave 1: 2 parallel executors for Tasks 1-3,5 + Task 4; Wave 2: 1 executor for Task 6)
 
 ### Debug Log References
 
+- No issues encountered — clean implementation with wave-based parallel execution
+
 ### Completion Notes List
+
+- Enhanced ScoringResult with top_reasons, concerns, confidence fields (with defaults for backward compat)
+- Updated SCORING_PROMPT to request structured rationale in LLM JSON output
+- Added _derive_confidence() for score-based confidence (High>=75, Medium 50-74, Low<50)
+- Added build_heuristic_rationale() for LLM-free structured rationale from breakdown
+- Added parse_rationale() backward compatibility wrapper for plain-text rationale
+- Updated job_scout.py execute() to serialize structured JSON rationale for Match storage
+- 53 tests passing (17 new + 36 existing), job_scoring.py 92%, job_scout.py 80%
 
 ### Change Log
 
+- 2026-01-31: Implementation via MODERATE route with wave-based parallel GSD executors
+
 ### File List
+
+**Created:**
+- (none)
+
+**Modified:**
+- `backend/app/services/job_scoring.py` — Enhanced prompt, ScoringResult fields, rationale helpers (92% coverage)
+- `backend/app/agents/core/job_scout.py` — Structured JSON rationale in Match creation (80% coverage)
+- `backend/tests/unit/test_services/test_job_scoring.py` — 16 new tests (rationale, confidence, backward compat)
+- `backend/tests/unit/test_agents/test_job_scout.py` — 1 new test (structured rationale in matches)
