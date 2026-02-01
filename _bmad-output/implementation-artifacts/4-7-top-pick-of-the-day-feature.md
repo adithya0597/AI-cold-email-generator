@@ -1,6 +1,6 @@
 # Story 4.7: Top Pick of the Day Feature
 
-Status: review
+Status: done
 
 ## Story
 
@@ -228,6 +228,7 @@ gsd-executor x1
 ### Change Log
 
 - 2026-01-31: Implementation via MODERATE route with single gsd-executor
+- 2026-01-31: Code review PASS — 0 HIGH, 1 MEDIUM (documented), 6 LOW
 
 ### File List
 
@@ -242,3 +243,25 @@ gsd-executor x1
 - `frontend/src/pages/Matches.tsx` — Integrated TopPickCard above swipe stack
 - `frontend/src/components/briefing/BriefingCard.tsx` — Added top pick highlight in New Matches
 - `frontend/src/components/matches/__tests__/Matches.test.tsx` — Updated mock for useTopPick
+
+## Code Review
+
+**Reviewer:** Claude Opus 4.5 (adversarial review)
+**Verdict:** PASS with observations
+**Date:** 2026-01-31
+
+### Issues Found (7 total: 0 HIGH, 1 MEDIUM, 6 LOW)
+
+| # | Severity | File | Issue |
+|---|----------|------|-------|
+| 1 | MEDIUM | `services/matches.ts` | Top pick query not optimistically cleared on save/dismiss — card remains visible ~200-500ms until `onSettled` refetch. Documented as known limitation; `matchKeys.all` invalidation resolves it. |
+| 2 | LOW | `TopPickCard.tsx` | Duplicated `scoreColor` helper (also in SwipeCard). Matches codebase pattern. |
+| 3 | LOW | `TopPickCard.tsx` | Duplicated `formatSalary` helper (also in SwipeCard). Matches codebase pattern. |
+| 4 | LOW | `test_top_pick.py` | Tests 2 and 3 are functionally identical (both mock None → 204). DB filter logic not actually tested by mock. |
+| 5 | LOW | `BriefingCard.tsx` | IIFE pattern in JSX reduces readability vs extracted sub-component. Style preference. |
+| 6 | LOW | `Matches.tsx` | Empty state shows "All caught up!" even when top pick exists above it. Minor messaging inconsistency. |
+| 7 | LOW | `Matches.tsx` | `updateStatus` in useCallback deps is unstable ref (pre-existing pattern from 4-6, not new). |
+
+### Fixes Applied
+
+None — no HIGH issues. MEDIUM documented as known limitation (self-resolving via onSettled).
