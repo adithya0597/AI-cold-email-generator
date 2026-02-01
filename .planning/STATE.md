@@ -10,16 +10,16 @@
 Phase: 4 of 9 (Job Discovery)
 Plan: 9 of ? in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 04-09 (Preference Learning from Swipe Behavior)
+Last activity: 2026-02-01 -- Completed 0-2 (Row-Level Security Policies)
 
 Progress: [██████████████████████████████░] ~50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: ~6 min
-- Total execution time: ~167 min
+- Total execution time: ~171 min
 
 **By Phase:**
 
@@ -125,6 +125,9 @@ Progress: [███████████████████████
 - [04-09]: Pattern detection thresholds: min 3 occurrences, 60%+ dismiss rate, confidence capped at 0.95
 - [04-09]: apply_learned_preferences implemented but NOT wired into live scoring pipeline (future integration)
 - [04-09]: Score adjustments: -15 * confidence for dismissed patterns, +10 * (1-confidence) for saved patterns
+- [0-2]: UUID validation over bind params for SET LOCAL -- async PG drivers don't reliably support bind params with SET
+- [0-2]: No WITH CHECK clause in RLS policies -- USING alone covers both read and write for FOR ALL
+- [0-2]: users and jobs tables excluded from RLS (not user-scoped)
 
 ### Pending Todos
 
@@ -140,6 +143,6 @@ Progress: [███████████████████████
 
 ## Session Continuity
 
-Last session: 2026-01-31
-Stopped at: Completed 04-09 (Preference Learning from Swipe Behavior). Full-stack preference learning: SwipeEvent recording, pattern detection service, learned preferences API, LearnedPreferenceBanner UI, 29 new tests (22 backend + 7 frontend).
+Last session: 2026-02-01
+Stopped at: Completed 0-2 (Row-Level Security Policies). RLS on 8 user-scoped tables with user isolation + dev bypass policies, transaction-scoped context helper, 85 tests.
 Resume file: None

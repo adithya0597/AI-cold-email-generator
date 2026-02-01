@@ -24,19 +24,19 @@ so that **my career information remains private and isolated from other users**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create RLS migration SQL (AC: #1, #2, #3, #5)
-  - [ ] 1.1: Create `supabase/migrations/00003_row_level_security.sql` with: ALTER TABLE ENABLE ROW LEVEL SECURITY for all 6 user-scoped tables
-  - [ ] 1.2: Add user isolation policy on each table: `user_id = current_setting('app.current_user_id')::uuid`
-  - [ ] 1.3: Add development bypass policy on each table with environment safeguards
-  - [ ] 1.4: Create matching rollback file `supabase/migrations/00003_row_level_security_rollback.sql`
+- [x] Task 1: Create RLS migration SQL (AC: #1, #2, #3, #5)
+  - [x] 1.1: Create `supabase/migrations/00003_row_level_security.sql` with: ALTER TABLE ENABLE ROW LEVEL SECURITY for all 8 user-scoped tables
+  - [x] 1.2: Add user isolation policy on each table: `user_id = current_setting('app.current_user_id', true)::uuid`
+  - [x] 1.3: Add development bypass policy on each table with environment safeguards
+  - [x] 1.4: Create matching rollback file `supabase/migrations/00003_row_level_security_rollback.sql`
 
-- [ ] Task 2: Update database session to set user context (AC: #4)
-  - [ ] 2.1: Create `backend/app/db/rls.py` with a dependency that sets `app.current_user_id` on the database session via `SET LOCAL`
-  - [ ] 2.2: Ensure the setting is session-scoped (SET LOCAL) so it's automatically cleared on transaction end
+- [x] Task 2: Update database session to set user context (AC: #4)
+  - [x] 2.1: Create `backend/app/db/rls.py` with a dependency that sets `app.current_user_id` on the database session via `SET LOCAL`
+  - [x] 2.2: Ensure the setting is session-scoped (SET LOCAL) so it's automatically cleared on transaction end
 
-- [ ] Task 3: Write backend tests for RLS (AC: #6)
-  - [ ] 3.1: Create `backend/tests/unit/test_db/test_rls.py` with tests verifying: policy existence on all 6 tables, RLS enabled on all 6 tables, user isolation logic, development bypass logic
-  - [ ] 3.2: Test that rollback migration cleanly removes all policies
+- [x] Task 3: Write backend tests for RLS (AC: #6)
+  - [x] 3.1: Create `backend/tests/unit/test_db/test_rls.py` with tests verifying: policy existence on all 8 tables, RLS enabled on all 8 tables, user isolation logic, development bypass logic
+  - [x] 3.2: Test that rollback migration cleanly removes all policies
 
 ## Dev Notes
 
