@@ -50,7 +50,7 @@ async def sync_user(
             "id": str(user.id),
             "clerk_id": user.clerk_id,
             "email": user.email,
-            "tier": user.tier.value if hasattr(user.tier, "value") else str(user.tier),
+            "tier": user.tier.value,
         },
         "is_new": is_new,
     }

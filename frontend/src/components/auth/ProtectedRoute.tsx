@@ -7,7 +7,7 @@
  * to /onboarding and returning users to /dashboard.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useApiClient } from '../../services/api';
@@ -18,7 +18,6 @@ export default function ProtectedRoute() {
   const navigate = useNavigate();
   const location = useLocation();
   const syncCalled = useRef(false);
-  const [syncDone, setSyncDone] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || syncCalled.current) return;
@@ -36,9 +35,6 @@ export default function ProtectedRoute() {
         // Sync failure is non-blocking -- user can still use the app.
         // Auth interceptor handles 401 redirects.
         console.error('User sync failed:', err);
-      })
-      .finally(() => {
-        setSyncDone(true);
       });
   }, [isLoaded, isSignedIn, apiClient, navigate, location.pathname]);
 
