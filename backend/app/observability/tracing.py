@@ -1,9 +1,9 @@
 """
 OpenTelemetry distributed tracing and Sentry error tracking setup.
 
-Initialises a TracerProvider with environment-appropriate exporters:
-- **development**: ``ConsoleSpanExporter`` (traces printed to stdout)
-- **production**: placeholder for OTLP exporter (Grafana Cloud / Honeycomb)
+Initialises a TracerProvider with endpoint-appropriate exporters:
+- **OTEL_EXPORTER_ENDPOINT set**: ``OTLPSpanExporter`` (gRPC to collector)
+- **no endpoint**: ``ConsoleSpanExporter`` (traces printed to stdout)
 
 Sentry is initialised with FastAPI and Starlette integrations so that
 unhandled exceptions are captured automatically.
@@ -50,11 +50,12 @@ def setup_observability(app: "FastAPI") -> None:
     only the first invocation has effect.
     """
     _init_sentry()
-    _init_opentelemetry(app)
+    otel_exporter = _init_opentelemetry(app)
     logger.info(
-        "Observability initialised  [env=%s, sentry=%s, otel=console]",
+        "Observability initialised  [env=%s, sentry=%s, otel=%s]",
         settings.APP_ENV,
         "enabled" if settings.SENTRY_DSN else "disabled",
+        otel_exporter,
     )
 
 
@@ -85,27 +86,42 @@ def _init_sentry() -> None:
 # OpenTelemetry
 # ---------------------------------------------------------------------------
 
-def _init_opentelemetry(app: "FastAPI") -> None:
-    """Set up the OTel TracerProvider and auto-instrument FastAPI + Celery."""
+def _init_opentelemetry(app: "FastAPI") -> str:
+    """Set up the OTel TracerProvider and auto-instrument FastAPI + Celery.
+
+    Returns the label of the exporter that was configured (``"otlp"`` or
+    ``"console"``).
+    """
 
     resource = Resource.create({SERVICE_NAME: "jobpilot-api"})
     provider = TracerProvider(resource=resource)
 
-    # --- Span exporter (environment-dependent) ---
-    if settings.APP_ENV == "production":
-        # Placeholder: swap in OTLPSpanExporter when a collector is provisioned.
-        #
-        #   from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-        #       OTLPSpanExporter,
-        #   )
-        #   provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-        #
-        logger.info(
-            "Production OTel exporter not configured -- add OTLP exporter "
-            "when Grafana Cloud / Honeycomb is provisioned"
-        )
+    # --- Span exporter (endpoint-dependent) ---
+    exporter_label = "console"
+    if settings.OTEL_EXPORTER_ENDPOINT:
+        try:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter,
+            )
+            exporter = OTLPSpanExporter(
+                endpoint=settings.OTEL_EXPORTER_ENDPOINT,
+            )
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+            exporter_label = "otlp"
+            logger.info(
+                "OTLP exporter configured  [endpoint=%s]",
+                settings.OTEL_EXPORTER_ENDPOINT,
+            )
+        except ImportError:
+            logger.warning(
+                "opentelemetry-exporter-otlp-proto-grpc not installed "
+                "-- falling back to ConsoleSpanExporter"
+            )
+            provider.add_span_processor(
+                SimpleSpanProcessor(ConsoleSpanExporter())
+            )
     else:
-        # Development: human-readable trace output on stdout
+        # No endpoint configured: human-readable trace output on stdout
         provider.add_span_processor(
             SimpleSpanProcessor(ConsoleSpanExporter())
         )
@@ -125,3 +141,5 @@ def _init_opentelemetry(app: "FastAPI") -> None:
     except Exception:
         # Celery may not be importable in every process (e.g. web-only deploys)
         logger.debug("Celery instrumentation skipped (Celery not available)")
+
+    return exporter_label

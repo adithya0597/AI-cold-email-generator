@@ -44,6 +44,7 @@ class Settings(BaseSettings):
 
     # --- Observability ---
     SENTRY_DSN: str = ""
+    OTEL_EXPORTER_ENDPOINT: str = ""
 
     # --- Langfuse (LLM observability -- replaces cost_tracker.py) ---
     LANGFUSE_PUBLIC_KEY: str = ""
