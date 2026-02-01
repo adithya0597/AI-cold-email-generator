@@ -115,6 +115,20 @@ class ApplicationDetailResponse(BaseModel):
     cover_letter_document_id: Optional[str] = None
 
 
+class UpdateStatusRequest(BaseModel):
+    """Request body for PATCH /applications/{id}/status."""
+
+    status: str
+
+
+class UpdateStatusResponse(BaseModel):
+    """Response for PATCH /applications/{id}/status."""
+
+    id: str
+    old_status: str
+    new_status: str
+
+
 # ---------------------------------------------------------------------------
 # History endpoints (must be before /queue to avoid route conflicts)
 # ---------------------------------------------------------------------------
@@ -241,6 +255,86 @@ async def get_application_detail(
         applied_at=row["applied_at"].isoformat() if row["applied_at"] else "",
         resume_version_id=str(row["resume_version_id"]) if row["resume_version_id"] else None,
         cover_letter_document_id=str(cl_id) if cl_id else None,
+    )
+
+
+VALID_STATUSES = {"applied", "screening", "interview", "offer", "closed", "rejected"}
+
+
+@router.patch("/{application_id}/status", response_model=UpdateStatusResponse)
+async def update_application_status(
+    application_id: str,
+    body: UpdateStatusRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Update application status (manual drag & drop from Kanban)."""
+    import uuid
+
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    new_status = body.status.lower()
+    if new_status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status '{body.status}'. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
+        )
+
+    async with AsyncSessionLocal() as session:
+        # Load current application
+        result = await session.execute(
+            text(
+                "SELECT a.id, a.status "
+                "FROM applications a "
+                "WHERE a.id = :aid "
+                "AND a.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND a.deleted_at IS NULL"
+            ),
+            {"aid": application_id, "uid": user_id},
+        )
+        row = result.mappings().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Application not found",
+            )
+
+        old_status = str(row["status"]).rsplit(".", 1)[-1].lower()
+
+        if old_status == new_status:
+            return UpdateStatusResponse(
+                id=application_id, old_status=old_status, new_status=new_status
+            )
+
+        # Update status
+        await session.execute(
+            text("UPDATE applications SET status = :status WHERE id = :aid"),
+            {"status": new_status, "aid": application_id},
+        )
+
+        # Insert audit trail
+        change_id = str(uuid.uuid4())
+        await session.execute(
+            text(
+                "INSERT INTO application_status_changes "
+                "(id, application_id, old_status, new_status, "
+                "detection_method, confidence) "
+                "VALUES (:id, :aid, :old, :new, 'manual', 1.0)"
+            ),
+            {
+                "id": change_id,
+                "aid": application_id,
+                "old": old_status,
+                "new": new_status,
+            },
+        )
+
+        await session.commit()
+
+    return UpdateStatusResponse(
+        id=application_id, old_status=old_status, new_status=new_status
     )
 
 

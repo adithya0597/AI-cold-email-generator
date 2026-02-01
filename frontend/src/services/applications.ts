@@ -3,9 +3,10 @@
  *
  * Provides typed functions and hooks for:
  *   - Fetching paginated application history
+ *   - Updating application status (drag & drop)
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosInstance } from 'axios';
 import { useApiClient } from './api';
 
@@ -21,12 +22,20 @@ export interface ApplicationItem {
   status: string;
   applied_at: string;
   resume_version_id: string | null;
+  updated_at?: string | null;
+  last_updated_by?: string | null;
 }
 
 export interface ApplicationListResponse {
   applications: ApplicationItem[];
   total: number;
   has_more: boolean;
+}
+
+export interface UpdateStatusResponse {
+  id: string;
+  old_status: string;
+  new_status: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +63,17 @@ async function fetchApplications(
   return data;
 }
 
+async function updateApplicationStatus(
+  api: AxiosInstance,
+  applicationId: string,
+  newStatus: string,
+): Promise<UpdateStatusResponse> {
+  const { data } = await api.patch(`/api/v1/applications/${applicationId}/status`, {
+    status: newStatus,
+  });
+  return data;
+}
+
 // ---------------------------------------------------------------------------
 // Hooks
 // ---------------------------------------------------------------------------
@@ -63,5 +83,18 @@ export function useApplications(status?: string) {
   return useQuery({
     queryKey: applicationKeys.list(status),
     queryFn: () => fetchApplications(api, status),
+  });
+}
+
+export function useUpdateApplicationStatus() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ applicationId, status }: { applicationId: string; status: string }) =>
+      updateApplicationStatus(api, applicationId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.all });
+    },
   });
 }

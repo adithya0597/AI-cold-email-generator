@@ -1,6 +1,6 @@
-"""Tests for the Applications API endpoints (Story 5-8).
+"""Tests for the Applications API endpoints (Stories 5-8, 6-5).
 
-Covers: approval queue list, count, approve, reject, batch approve, and error cases.
+Covers: approval queue, history, detail, status update, and error cases.
 """
 
 from datetime import datetime, timezone
@@ -482,6 +482,78 @@ class TestApplicationDetail:
             with pytest.raises(Exception) as exc_info:
                 await get_application_detail(
                     application_id="nonexistent", user_id="user123"
+                )
+
+        assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test: Update application status (Story 6-5)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateApplicationStatus:
+    """Tests for PATCH /applications/{id}/status."""
+
+    @pytest.mark.asyncio
+    async def test_update_status_success(self):
+        """Updates application status and creates audit trail."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_select = MagicMock()
+        mock_select.mappings.return_value.first.return_value = {
+            "id": "app-uuid-1",
+            "status": "applied",
+        }
+
+        mock_update = MagicMock()
+        mock_insert = MagicMock()
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_select, mock_update, mock_insert])
+        mock_sess.commit = AsyncMock()
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import UpdateStatusRequest, update_application_status
+
+            result = await update_application_status(
+                application_id="app-uuid-1",
+                body=UpdateStatusRequest(status="interview"),
+                user_id="user123",
+            )
+
+        assert result.old_status == "applied"
+        assert result.new_status == "interview"
+
+    @pytest.mark.asyncio
+    async def test_update_invalid_status_returns_400(self):
+        """Returns 400 for invalid status value."""
+        from app.api.v1.applications import UpdateStatusRequest, update_application_status
+
+        with pytest.raises(Exception) as exc_info:
+            await update_application_status(
+                application_id="app-uuid-1",
+                body=UpdateStatusRequest(status="invalid_status"),
+                user_id="user123",
+            )
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_update_not_found_returns_404(self):
+        """Returns 404 when application doesn't exist."""
+        mock_cm, mock_sess = _mock_session_cm()
+        mock_select = MagicMock()
+        mock_select.mappings.return_value.first.return_value = None
+        mock_sess.execute = AsyncMock(return_value=mock_select)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import UpdateStatusRequest, update_application_status
+
+            with pytest.raises(Exception) as exc_info:
+                await update_application_status(
+                    application_id="nonexistent",
+                    body=UpdateStatusRequest(status="interview"),
+                    user_id="user123",
                 )
 
         assert exc_info.value.status_code == 404
