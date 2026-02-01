@@ -306,6 +306,135 @@ async def list_documents(
     }
 
 
+@router.get("/{document_id}/diff")
+async def get_document_diff(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Return a structured diff comparing a tailored resume against the master resume.
+
+    The tailored document must have job_id set (not a master resume).
+    Returns section-level comparisons with change classifications,
+    ATS metrics, and job context.
+    """
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        # 1. Load the tailored document (verify ownership + type + has job_id)
+        doc_result = await session.execute(
+            text("""
+                SELECT d.id, d.type, d.content, d.job_id, d.version, d.created_at
+                FROM documents d
+                JOIN users u ON d.user_id = u.id
+                WHERE d.id = :doc_id::uuid
+                  AND u.clerk_id = :uid
+                  AND d.deleted_at IS NULL
+            """),
+            {"doc_id": document_id, "uid": user_id},
+        )
+        tailored_row = doc_result.mappings().first()
+
+        if not tailored_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
+
+        if str(tailored_row["type"]) != "resume" or tailored_row["job_id"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Diff is only available for tailored resumes (documents with a job_id).",
+            )
+
+        # 2. Load the active master resume for this user
+        master_result = await session.execute(
+            text("""
+                SELECT d.id, d.content
+                FROM documents d
+                JOIN users u ON d.user_id = u.id
+                WHERE u.clerk_id = :uid
+                  AND d.type = 'resume'
+                  AND d.job_id IS NULL
+                  AND d.deleted_at IS NULL
+                ORDER BY d.created_at DESC
+                LIMIT 1
+            """),
+            {"uid": user_id},
+        )
+        master_row = master_result.mappings().first()
+
+        if not master_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No master resume found. Upload a master resume first.",
+            )
+
+        # 3. Load job context
+        job_context = {"job_id": str(tailored_row["job_id"]), "title": None, "company": None}
+        try:
+            job_result = await session.execute(
+                text("SELECT title, company FROM jobs WHERE id = :jid"),
+                {"jid": str(tailored_row["job_id"])},
+            )
+            job_row = job_result.mappings().first()
+            if job_row:
+                job_context["title"] = job_row["title"]
+                job_context["company"] = job_row["company"]
+        except Exception:
+            logger.warning("Failed to load job context for job_id=%s", tailored_row["job_id"])
+
+    # 4. Parse content JSON
+    try:
+        tailored_content = json.loads(tailored_row["content"]) if tailored_row["content"] else {}
+    except (json.JSONDecodeError, TypeError):
+        tailored_content = {}
+
+    try:
+        master_content = json.loads(master_row["content"]) if master_row["content"] else {}
+    except (json.JSONDecodeError, TypeError):
+        master_content = {}
+
+    # 5. Build section-level diff with change classification
+    sections_diff = []
+    tailored_sections = tailored_content.get("sections", [])
+
+    for section in tailored_sections:
+        original = section.get("original_content", "")
+        tailored = section.get("tailored_content", "")
+
+        if not original and tailored:
+            change_type = "added"
+        elif original and not tailored:
+            change_type = "removed"
+        elif original != tailored:
+            change_type = "modified"
+        else:
+            change_type = "unchanged"
+
+        sections_diff.append({
+            "section_name": section.get("section_name", ""),
+            "original_content": original,
+            "tailored_content": tailored,
+            "changes_made": section.get("changes_made", []),
+            "change_type": change_type,
+        })
+
+    return {
+        "document_id": str(tailored_row["id"]),
+        "master_document_id": str(master_row["id"]),
+        "version": tailored_row["version"],
+        "job": job_context,
+        "sections": sections_diff,
+        "ats_score": tailored_content.get("ats_score"),
+        "keywords_incorporated": tailored_content.get("keywords_incorporated", []),
+        "keywords_missing": tailored_content.get("keywords_missing", []),
+        "tailoring_rationale": tailored_content.get("tailoring_rationale", ""),
+    }
+
+
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,

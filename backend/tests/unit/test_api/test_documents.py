@@ -434,3 +434,316 @@ class TestUploadValidation:
 
         assert result["document_id"]
         assert result["storage_path"] == "user123/resume.docx"
+
+
+# ---------------------------------------------------------------------------
+# Diff endpoint helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_tailored_content():
+    """Return JSON content matching TailoredResume structure."""
+    return json.dumps({
+        "sections": [
+            {
+                "section_name": "summary",
+                "original_content": "Senior Software Engineer with 5 years experience",
+                "tailored_content": "Senior Backend Engineer with 5 years building scalable APIs",
+                "changes_made": ["Reframed as backend-focused", "Added API emphasis"],
+            },
+            {
+                "section_name": "skills",
+                "original_content": "Python, FastAPI, PostgreSQL, React",
+                "tailored_content": "Python, FastAPI, PostgreSQL, Distributed Systems",
+                "changes_made": ["Reordered for relevance"],
+            },
+            {
+                "section_name": "new_section",
+                "original_content": "",
+                "tailored_content": "Relevant certifications section",
+                "changes_made": ["Added certifications section"],
+            },
+        ],
+        "keywords_incorporated": ["python", "fastapi", "backend"],
+        "keywords_missing": ["kubernetes"],
+        "ats_score": 82,
+        "tailoring_rationale": "Emphasized backend experience for Backend Engineer role",
+    })
+
+
+def _make_master_content():
+    """Return JSON content matching master resume (ExtractedProfile)."""
+    return json.dumps({
+        "name": "Test User",
+        "skills": ["Python", "FastAPI"],
+        "experience": [],
+        "education": [],
+    })
+
+
+# ---------------------------------------------------------------------------
+# Test: Diff endpoint happy path (AC1, AC2, AC4, AC5)
+# ---------------------------------------------------------------------------
+
+
+class TestDiffEndpointHappyPath:
+    """Tests for GET /{document_id}/diff."""
+
+    @pytest.mark.asyncio
+    async def test_diff_returns_structured_comparison(self):
+        """Returns section-level diff with ATS metrics and job context."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        tailored_id = uuid4()
+        master_id = uuid4()
+        job_id = uuid4()
+
+        # Query 1: tailored document
+        mock_tailored = MagicMock()
+        mock_tailored.mappings.return_value.first.return_value = {
+            "id": tailored_id,
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": job_id,
+            "version": 1,
+            "created_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+        }
+
+        # Query 2: master document
+        mock_master = MagicMock()
+        mock_master.mappings.return_value.first.return_value = {
+            "id": master_id,
+            "content": _make_master_content(),
+        }
+
+        # Query 3: job context
+        mock_job = MagicMock()
+        mock_job.mappings.return_value.first.return_value = {
+            "title": "Backend Engineer",
+            "company": "BigTech Inc",
+        }
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_tailored, mock_master, mock_job])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            result = await get_document_diff(document_id=str(tailored_id), user_id="user123")
+
+        assert result["document_id"] == str(tailored_id)
+        assert result["master_document_id"] == str(master_id)
+        assert result["version"] == 1
+        assert result["ats_score"] == 82
+        assert result["keywords_incorporated"] == ["python", "fastapi", "backend"]
+        assert result["keywords_missing"] == ["kubernetes"]
+        assert result["tailoring_rationale"] == "Emphasized backend experience for Backend Engineer role"
+        assert result["job"]["title"] == "Backend Engineer"
+        assert result["job"]["company"] == "BigTech Inc"
+        assert len(result["sections"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# Test: Change classification (AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestDiffChangeClassification:
+    """Tests for change type classification in diff sections."""
+
+    @pytest.mark.asyncio
+    async def test_sections_classified_correctly(self):
+        """Sections are classified as modified, added based on content."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        tailored_id = uuid4()
+        job_id = uuid4()
+
+        mock_tailored = MagicMock()
+        mock_tailored.mappings.return_value.first.return_value = {
+            "id": tailored_id,
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": job_id,
+            "version": 1,
+            "created_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+        }
+
+        mock_master = MagicMock()
+        mock_master.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "content": _make_master_content(),
+        }
+
+        mock_job = MagicMock()
+        mock_job.mappings.return_value.first.return_value = {"title": "Engineer", "company": "Co"}
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_tailored, mock_master, mock_job])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            result = await get_document_diff(document_id=str(tailored_id), user_id="user123")
+
+        sections = result["sections"]
+        # summary: both exist and differ → modified
+        assert sections[0]["change_type"] == "modified"
+        # skills: both exist and differ → modified
+        assert sections[1]["change_type"] == "modified"
+        # new_section: original empty, tailored exists → added
+        assert sections[2]["change_type"] == "added"
+
+
+# ---------------------------------------------------------------------------
+# Test: Authorization (AC6)
+# ---------------------------------------------------------------------------
+
+
+class TestDiffAuthorization:
+    """Tests that diff endpoint returns 404 for unauthorized access."""
+
+    @pytest.mark.asyncio
+    async def test_wrong_user_gets_404(self):
+        """Returns 404 when document not owned by user."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = None
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            with pytest.raises(Exception) as exc_info:
+                await get_document_diff(document_id=str(uuid4()), user_id="wrong_user")
+
+        assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test: Validation (AC7)
+# ---------------------------------------------------------------------------
+
+
+class TestDiffValidation:
+    """Tests for validation — master resume and non-existent docs."""
+
+    @pytest.mark.asyncio
+    async def test_master_resume_returns_400(self):
+        """Returns 400 when requesting diff for a master resume (no job_id)."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": "{}",
+            "job_id": None,  # Master resume
+            "version": 1,
+            "created_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            with pytest.raises(Exception) as exc_info:
+                await get_document_diff(document_id=str(uuid4()), user_id="user123")
+
+        assert exc_info.value.status_code == 400
+        assert "tailored" in str(exc_info.value.detail).lower()
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_document_returns_404(self):
+        """Returns 404 when document doesn't exist."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = None
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            with pytest.raises(Exception) as exc_info:
+                await get_document_diff(document_id=str(uuid4()), user_id="user123")
+
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_no_master_resume_returns_404(self):
+        """Returns 404 when no master resume exists for the user."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        # Tailored doc exists
+        mock_tailored = MagicMock()
+        mock_tailored.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": uuid4(),
+            "version": 1,
+            "created_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+        }
+
+        # No master resume
+        mock_master = MagicMock()
+        mock_master.mappings.return_value.first.return_value = None
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_tailored, mock_master])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            with pytest.raises(Exception) as exc_info:
+                await get_document_diff(document_id=str(uuid4()), user_id="user123")
+
+        assert exc_info.value.status_code == 404
+        assert "master resume" in str(exc_info.value.detail).lower()
+
+
+# ---------------------------------------------------------------------------
+# Test: ATS metrics in response (AC4, AC8)
+# ---------------------------------------------------------------------------
+
+
+class TestDiffATSMetrics:
+    """Tests that ATS metrics are included in diff response."""
+
+    @pytest.mark.asyncio
+    async def test_ats_metrics_present(self):
+        """Response includes ats_score, keywords_incorporated, keywords_missing."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_tailored = MagicMock()
+        mock_tailored.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": uuid4(),
+            "version": 1,
+            "created_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+        }
+
+        mock_master = MagicMock()
+        mock_master.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "content": _make_master_content(),
+        }
+
+        mock_job = MagicMock()
+        mock_job.mappings.return_value.first.return_value = {"title": "Eng", "company": "Co"}
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_tailored, mock_master, mock_job])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_document_diff
+
+            result = await get_document_diff(document_id=str(uuid4()), user_id="user123")
+
+        assert "ats_score" in result
+        assert result["ats_score"] == 82
+        assert "keywords_incorporated" in result
+        assert len(result["keywords_incorporated"]) == 3
+        assert "keywords_missing" in result
+        assert result["keywords_missing"] == ["kubernetes"]
+        assert "tailoring_rationale" in result
