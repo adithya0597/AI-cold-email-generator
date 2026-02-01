@@ -24,40 +24,40 @@ so that **matching improves over time without manual preference updates**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add LearnedPreference and SwipeEvent DB models (AC: #1, #6)
-  - [ ] 1.1: Add `SwipeEvent` model to `backend/app/db/models.py` with fields: id, user_id, match_id, action (saved/dismissed), job_company, job_location, job_remote, job_salary_min, job_salary_max, job_employment_type, created_at
-  - [ ] 1.2: Add `LearnedPreference` model to `backend/app/db/models.py` with fields: id, user_id, pattern_type (company/location/salary/remote/employment_type), pattern_value, confidence (0.0-1.0), occurrences (int), status (pending/acknowledged/rejected), created_at, updated_at
-  - [ ] 1.3: Add `LearnedPreferenceStatus` enum to models.py: pending, acknowledged, rejected
-  - [ ] 1.4: Create Supabase migration `00002_swipe_events_learned_preferences.sql`
-  - [ ] 1.5: Add relationships to User model (swipe_events, learned_preferences)
+- [x] Task 1: Add LearnedPreference and SwipeEvent DB models (AC: #1, #6)
+  - [x] 1.1: Add `SwipeEvent` model to `backend/app/db/models.py` with fields: id, user_id, match_id, action (saved/dismissed), job_company, job_location, job_remote, job_salary_min, job_salary_max, job_employment_type, created_at
+  - [x] 1.2: Add `LearnedPreference` model to `backend/app/db/models.py` with fields: id, user_id, pattern_type (company/location/salary/remote/employment_type), pattern_value, confidence (0.0-1.0), occurrences (int), status (pending/acknowledged/rejected), created_at, updated_at
+  - [x] 1.3: Add `LearnedPreferenceStatus` enum to models.py: pending, acknowledged, rejected
+  - [x] 1.4: Create Supabase migration `00002_swipe_events_learned_preferences.sql`
+  - [x] 1.5: Add relationships to User model (swipe_events, learned_preferences)
 
-- [ ] Task 2: Record swipe events on match status update (AC: #6)
-  - [ ] 2.1: In `backend/app/api/v1/matches.py`, after successful status update in `update_match_status`, create a `SwipeEvent` capturing the action and denormalized job attributes
-  - [ ] 2.2: Write backend tests for swipe event recording (verify event created on save, event created on dismiss, job attributes captured correctly)
+- [x] Task 2: Record swipe events on match status update (AC: #6)
+  - [x] 2.1: In `backend/app/api/v1/matches.py`, after successful status update in `update_match_status`, create a `SwipeEvent` capturing the action and denormalized job attributes
+  - [x] 2.2: Write backend tests for swipe event recording (verify event created on save, event created on dismiss, job attributes captured correctly)
 
-- [ ] Task 3: Implement preference learning service (AC: #1, #2)
-  - [ ] 3.1: Create `backend/app/services/preference_learning.py` with `detect_patterns(user_id, db)` function
-  - [ ] 3.2: Implement pattern detection: query SwipeEvent table, group by attribute (company, location, remote, salary range), find attributes with 3+ dismissals and >60% dismiss rate → create LearnedPreference if not already exists
-  - [ ] 3.3: Implement `apply_learned_preferences(user_id, base_score, job, db)` function that adjusts score based on acknowledged/pending learned preferences (dismissed patterns: -15 per high-confidence match, saved patterns: +10)
-  - [ ] 3.4: Write unit tests for pattern detection (mock swipe events, verify correct patterns detected)
-  - [ ] 3.5: Write unit tests for score adjustment (mock learned preferences, verify score changes)
+- [x] Task 3: Implement preference learning service (AC: #1, #2)
+  - [x] 3.1: Create `backend/app/services/preference_learning.py` with `detect_patterns(user_id, db)` function
+  - [x] 3.2: Implement pattern detection: query SwipeEvent table, group by attribute (company, location, remote, salary range), find attributes with 3+ dismissals and >60% dismiss rate → create LearnedPreference if not already exists
+  - [x] 3.3: Implement `apply_learned_preferences(user_id, base_score, job, db)` function that adjusts score based on acknowledged/pending learned preferences (dismissed patterns: -15 per high-confidence match, saved patterns: +10)
+  - [x] 3.4: Write unit tests for pattern detection (mock swipe events, verify correct patterns detected)
+  - [x] 3.5: Write unit tests for score adjustment (mock learned preferences, verify score changes)
 
-- [ ] Task 4: Create learned preferences API endpoints (AC: #3, #4)
-  - [ ] 4.1: Create `backend/app/api/v1/learned_preferences.py` with router prefix `/preferences/learned`
-  - [ ] 4.2: Implement `GET /preferences/learned` — returns list of learned preferences for authenticated user
-  - [ ] 4.3: Implement `PATCH /preferences/learned/{id}` — update status to acknowledged/rejected
-  - [ ] 4.4: Register router in `backend/app/api/v1/router.py`
-  - [ ] 4.5: Write backend tests for both endpoints
+- [x] Task 4: Create learned preferences API endpoints (AC: #3, #4)
+  - [x] 4.1: Create `backend/app/api/v1/learned_preferences.py` with router prefix `/preferences/learned`
+  - [x] 4.2: Implement `GET /preferences/learned` — returns list of learned preferences for authenticated user
+  - [x] 4.3: Implement `PATCH /preferences/learned/{id}` — update status to acknowledged/rejected
+  - [x] 4.4: Register router in `backend/app/api/v1/router.py`
+  - [x] 4.5: Write backend tests for both endpoints
 
-- [ ] Task 5: Add frontend types and API service (AC: #3, #4, #5)
-  - [ ] 5.1: Add `LearnedPreference` interface to `frontend/src/types/matches.ts`
-  - [ ] 5.2: Create `frontend/src/services/learnedPreferences.ts` with `useLearnedPreferences()` query hook and `useUpdateLearnedPreference()` mutation hook
-  - [ ] 5.3: Write service tests
+- [x] Task 5: Add frontend types and API service (AC: #3, #4, #5)
+  - [x] 5.1: Add `LearnedPreference` interface to `frontend/src/types/matches.ts`
+  - [x] 5.2: Create `frontend/src/services/learnedPreferences.ts` with `useLearnedPreferences()` query hook and `useUpdateLearnedPreference()` mutation hook
+  - [x] 5.3: Write service tests
 
-- [ ] Task 6: Add Learned Preferences UI to Matches page (AC: #5)
-  - [ ] 6.1: Create `frontend/src/components/matches/LearnedPreferenceBanner.tsx` — shows pending learned preferences as dismissible suggestion cards
-  - [ ] 6.2: Integrate banner into `frontend/src/pages/Matches.tsx` above the swipe card area
-  - [ ] 6.3: Write frontend tests for LearnedPreferenceBanner (renders suggestions, accept button works, dismiss button works, hidden when no pending preferences)
+- [x] Task 6: Add Learned Preferences UI to Matches page (AC: #5)
+  - [x] 6.1: Create `frontend/src/components/matches/LearnedPreferenceBanner.tsx` — shows pending learned preferences as dismissible suggestion cards
+  - [x] 6.2: Integrate banner into `frontend/src/pages/Matches.tsx` above the swipe card area
+  - [x] 6.3: Write frontend tests for LearnedPreferenceBanner (renders suggestions, accept button works, dismiss button works, hidden when no pending preferences)
 
 ## Dev Notes
 

@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 4 of 9 (Job Discovery)
-Plan: 7 of ? in current phase
+Plan: 9 of ? in current phase
 Status: In progress
-Last activity: 2026-01-31 -- Completed 04-07 (Top Pick of the Day Feature)
+Last activity: 2026-01-31 -- Completed 04-09 (Preference Learning from Swipe Behavior)
 
-Progress: [████████████████████████████░] ~48%
+Progress: [██████████████████████████████░] ~50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: ~6 min
-- Total execution time: ~160 min
+- Total execution time: ~167 min
 
 **By Phase:**
 
@@ -28,7 +28,7 @@ Progress: [███████████████████████
 | 1 | 8/8 | ~63 min | ~8 min |
 | 2 | 6/6 | ~32 min | ~5 min |
 | 3 | 8/8 | ~40 min | ~5 min |
-| 4 | 4/? | ~25 min | ~6 min |
+| 4 | 5/? | ~32 min | ~6 min |
 
 ## Accumulated Context
 
@@ -121,6 +121,10 @@ Progress: [███████████████████████
 - [04-04]: Company size scoring (0-10 pts) added to heuristic; total normalized from 110 to 0-100 via int(raw/1.1)
 - [04-04]: MATCH_SCORE_THRESHOLD=40 replaces score>0 filter; LLM_SCORING_ENABLED feature flag
 - [04-04]: Cost tracking with token estimation (len//4); lazy imports for OpenAIClient and cost_tracker
+- [04-09]: SwipeEvent is append-only (TimestampMixin only); LearnedPreference uses SoftDeleteMixin for rejected patterns
+- [04-09]: Pattern detection thresholds: min 3 occurrences, 60%+ dismiss rate, confidence capped at 0.95
+- [04-09]: apply_learned_preferences implemented but NOT wired into live scoring pipeline (future integration)
+- [04-09]: Score adjustments: -15 * confidence for dismissed patterns, +10 * (1-confidence) for saved patterns
 
 ### Pending Todos
 
@@ -137,5 +141,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 04-07 (Top Pick of the Day Feature). Full-stack top pick feature with backend endpoint, TopPickCard component, BriefingCard integration, 31 tests passing (3 backend + 28 frontend).
+Stopped at: Completed 04-09 (Preference Learning from Swipe Behavior). Full-stack preference learning: SwipeEvent recording, pattern detection service, learned preferences API, LearnedPreferenceBanner UI, 29 new tests (22 backend + 7 frontend).
 Resume file: None
