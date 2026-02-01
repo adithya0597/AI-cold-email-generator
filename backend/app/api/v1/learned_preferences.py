@@ -9,7 +9,7 @@ Provides endpoints for viewing and managing learned preferences:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -145,7 +145,7 @@ async def update_learned_preference_status(
 
     # Soft-delete rejected preferences
     if body.status == "rejected":
-        pref.deleted_at = datetime.utcnow()
+        pref.deleted_at = datetime.now(timezone.utc)
         pref.deleted_by = user.id
         pref.deletion_reason = "User rejected learned preference"
 

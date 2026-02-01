@@ -1,6 +1,6 @@
 # Story 4.9: Preference Learning from Swipe Behavior
 
-Status: review
+Status: done
 
 ## Story
 
