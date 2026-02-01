@@ -104,11 +104,13 @@ def agent_job_scout(self, user_id: str, task_data: dict) -> Dict[str, Any]:
 def agent_resume(self, user_id: str, task_data: dict) -> Dict[str, Any]:
     """Run the Resume Tailoring agent for a user.
 
-    Placeholder -- the ResumeAgent class will be implemented in Phase 5.
+    Loads the user's profile and a target job, then produces a tailored
+    resume via LLM and stores it in the documents table.
     """
     logger.info("agent_resume started for user=%s", user_id)
 
     async def _execute():
+        from app.agents.pro.resume_agent import ResumeAgent
         from app.observability.langfuse_client import create_agent_trace, flush_traces
 
         trace = create_agent_trace(
@@ -117,9 +119,10 @@ def agent_resume(self, user_id: str, task_data: dict) -> Dict[str, Any]:
             celery_task_id=self.request.id,
         )
         try:
-            # TODO(Phase 5): Instantiate and run ResumeAgent
-            trace.update(output={"status": "not_implemented"})
-            return {"status": "not_implemented", "agent": "resume"}
+            agent = ResumeAgent()
+            result = await agent.run(user_id, task_data)
+            trace.update(output=result.to_dict())
+            return result.to_dict()
         except Exception as exc:
             trace.update(level="ERROR", status_message=str(exc))
             raise
