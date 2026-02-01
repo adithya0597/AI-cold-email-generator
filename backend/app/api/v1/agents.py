@@ -41,6 +41,25 @@ class BrakeStatusResponse(BaseModel):
     paused_tasks_count: int = 0
 
 
+class EventItem(BaseModel):
+    """A single event for REST recovery."""
+
+    id: str
+    event_type: str
+    agent_type: Optional[str] = None
+    title: str
+    severity: str
+    data: Dict[str, Any] = {}
+    timestamp: str
+
+
+class EventsResponse(BaseModel):
+    """Events since a given timestamp."""
+
+    events: List[EventItem]
+    count: int
+
+
 class ActivityItem(BaseModel):
     """A single agent activity record."""
 
@@ -160,4 +179,54 @@ async def get_activity_feed(
         ],
         total=total,
         has_more=(offset + limit) < total,
+    )
+
+
+@router.get("/events", response_model=EventsResponse)
+async def get_events_since(
+    user_id: str = Query(..., description="User ID"),
+    since: str = Query(..., description="ISO 8601 timestamp to fetch events after"),
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    """Return agent events since the given timestamp.
+
+    Used as a REST fallback to recover events missed during WebSocket
+    disconnection.  Returns events in chronological order (oldest first)
+    so the client can replay them.
+    """
+    from datetime import datetime
+
+    from sqlalchemy import select
+
+    from app.db.engine import AsyncSessionLocal
+    from app.db.models import AgentActivity
+
+    since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(AgentActivity)
+            .where(
+                AgentActivity.user_id == user_id,
+                AgentActivity.created_at > since_dt,
+            )
+            .order_by(AgentActivity.created_at.asc())
+            .limit(limit)
+        )
+        events = result.scalars().all()
+
+    return EventsResponse(
+        events=[
+            EventItem(
+                id=str(e.id),
+                event_type=e.event_type,
+                agent_type=e.agent_type,
+                title=e.title,
+                severity=e.severity,
+                data=e.data or {},
+                timestamp=e.created_at.isoformat() if e.created_at else "",
+            )
+            for e in events
+        ],
+        count=len(events),
     )
