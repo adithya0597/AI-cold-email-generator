@@ -1,6 +1,6 @@
 # Story 4.7: Top Pick of the Day Feature
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -202,12 +202,43 @@ frontend/src/components/matches/MatchDetail.tsx          # Match detail is stabl
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
+### Route Taken
+
+MODERATE (score: 6/16)
+
+### GSD Subagents Used
+
+gsd-executor x1
 
 ### Debug Log References
 
+- 1 auto-fixed deviation: Updated existing Matches.test.tsx mock to include useTopPick after import was added to Matches.tsx
+
 ### Completion Notes List
+
+- Added GET /api/v1/matches/top-pick backend endpoint — returns highest-scoring "new" match or 204
+- Created TopPickCard component with gradient border, star badge, extended rationale display
+- Added useTopPick() TanStack Query hook with 204 handling via validateStatus
+- Integrated TopPickCard above swipe stack in Matches page (conditional render)
+- Added top pick highlight in BriefingCard New Matches section with star badge and "Review Now" link
+- 3 backend tests, 9 frontend tests (28 total frontend matches tests passing)
 
 ### Change Log
 
+- 2026-01-31: Implementation via MODERATE route with single gsd-executor
+
 ### File List
+
+**Created:**
+- `frontend/src/components/matches/TopPickCard.tsx` — Featured top pick card with star badge
+- `frontend/src/components/matches/__tests__/TopPick.test.tsx` — 9 frontend tests
+- `backend/tests/unit/test_api/test_top_pick.py` — 3 backend tests
+
+**Modified:**
+- `backend/app/api/v1/matches.py` — Added GET /top-pick endpoint
+- `frontend/src/services/matches.ts` — Added useTopPick() hook + matchKeys.topPick
+- `frontend/src/pages/Matches.tsx` — Integrated TopPickCard above swipe stack
+- `frontend/src/components/briefing/BriefingCard.tsx` — Added top pick highlight in New Matches
+- `frontend/src/components/matches/__tests__/Matches.test.tsx` — Updated mock for useTopPick

@@ -114,7 +114,7 @@ development_status:
   4-4-ai-job-matching-algorithm: done
   4-5-match-rationale-generation: done
   4-6-swipe-card-interface: done
-  4-7-top-pick-of-the-day-feature: backlog
+  4-7-top-pick-of-the-day-feature: review
   4-8-job-detail-expansion: backlog
   4-9-preference-learning-from-swipe-behavior: backlog
   4-10-job-matches-empty-state: backlog
