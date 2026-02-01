@@ -114,6 +114,12 @@ class BriefingType:
     LITE = "lite"
 
 
+class LearnedPreferenceStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACKNOWLEDGED = "acknowledged"
+    REJECTED = "rejected"
+
+
 class H1BSponsorStatus(str, enum.Enum):
     VERIFIED = "verified"
     UNVERIFIED = "unverified"
@@ -307,6 +313,57 @@ class Match(SoftDeleteMixin, TimestampMixin, Base):
     # Relationships
     user = relationship("User", back_populates="matches")
     job = relationship("Job", back_populates="matches")
+
+
+class SwipeEvent(TimestampMixin, Base):
+    __tablename__ = "swipe_events"
+    __table_args__ = (
+        Index("ix_swipe_events_user_id", "user_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    match_id = Column(
+        UUID(as_uuid=True), ForeignKey("matches.id", ondelete="CASCADE"), nullable=False
+    )
+    action = Column(Text, nullable=False)  # "saved" | "dismissed"
+    job_company = Column(Text, nullable=True)
+    job_location = Column(Text, nullable=True)
+    job_remote = Column(Boolean, nullable=True)
+    job_salary_min = Column(Integer, nullable=True)
+    job_salary_max = Column(Integer, nullable=True)
+    job_employment_type = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="swipe_events")
+    match = relationship("Match", backref="swipe_events")
+
+
+class LearnedPreference(SoftDeleteMixin, TimestampMixin, Base):
+    __tablename__ = "learned_preferences"
+    __table_args__ = (
+        Index("ix_learned_preferences_user_id", "user_id"),
+        Index("ix_learned_preferences_status", "status"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    pattern_type = Column(Text, nullable=False)
+    pattern_value = Column(Text, nullable=False)
+    confidence = Column(Numeric(3, 2), nullable=False, default=0.0)
+    occurrences = Column(Integer, nullable=False, default=0)
+    status = Column(
+        Enum(LearnedPreferenceStatus, name="learned_preference_status", create_type=False),
+        nullable=False,
+        default=LearnedPreferenceStatus.PENDING,
+    )
+
+    # Relationships
+    user = relationship("User", backref="learned_preferences")
 
 
 class Document(SoftDeleteMixin, TimestampMixin, Base):
