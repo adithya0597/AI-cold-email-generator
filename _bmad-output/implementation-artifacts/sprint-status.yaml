@@ -107,7 +107,7 @@ development_status:
   # ═══════════════════════════════════════════
   # Epic 4: AI-Powered Job Matching (10 stories)
   # ═══════════════════════════════════════════
-  epic-4: in-progress
+  epic-4: done
   4-1-job-scout-agent-implementation: done
   4-2-indeed-job-board-integration: done
   4-3-linkedin-job-scraping-integration: done
@@ -117,7 +117,7 @@ development_status:
   4-7-top-pick-of-the-day-feature: done
   4-8-job-detail-expansion: done
   4-9-preference-learning-from-swipe-behavior: done
-  4-10-job-matches-empty-state: review
+  4-10-job-matches-empty-state: done
   epic-4-retrospective: optional
 
   # ═══════════════════════════════════════════
