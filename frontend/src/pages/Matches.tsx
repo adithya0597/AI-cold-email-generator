@@ -16,24 +16,24 @@ export default function Matches() {
   const { data, isLoading, isError } = useMatches('new');
   const updateStatus = useUpdateMatchStatus();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const matches = data?.data ?? [];
-  const currentMatch = matches[currentIndex] ?? null;
+  const currentMatch = matches[0] ?? null;
 
   const handleSave = useCallback(() => {
     if (!currentMatch) return;
     updateStatus.mutate({ matchId: currentMatch.id, status: 'saved' });
     setExpandedId(null);
-    setCurrentIndex((prev) => prev + 1);
+    // Optimistic update removes the item from matches[], shifting the array.
+    // Keep currentIndex the same so the next item (which slid into this position) is shown.
   }, [currentMatch, updateStatus]);
 
   const handleDismiss = useCallback(() => {
     if (!currentMatch) return;
     updateStatus.mutate({ matchId: currentMatch.id, status: 'dismissed' });
     setExpandedId(null);
-    setCurrentIndex((prev) => prev + 1);
+    // Same as handleSave — no index increment needed since optimistic update shifts array.
   }, [currentMatch, updateStatus]);
 
   const handleToggleExpand = useCallback(() => {
@@ -102,7 +102,7 @@ export default function Matches() {
   }
 
   // Empty state
-  if (!currentMatch || currentIndex >= matches.length) {
+  if (!currentMatch) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]" data-testid="empty-state">
         <div className="text-center max-w-md mx-auto">
@@ -132,7 +132,7 @@ export default function Matches() {
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Job Matches</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {matches.length - currentIndex} match{matches.length - currentIndex !== 1 ? 'es' : ''} to review
+          {matches.length} match{matches.length !== 1 ? 'es' : ''} to review
         </p>
       </div>
 

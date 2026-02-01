@@ -1,6 +1,6 @@
 # Story 4.6: Swipe Card Interface
 
-Status: review
+Status: done
 
 ## Story
 
@@ -281,9 +281,24 @@ gsd-executor x1
 - Route registered at /matches (protected + onboarding-guarded)
 - 15 backend tests (95% coverage on matches.py), 19 frontend tests
 
+### Code Review Results
+
+**Reviewer:** Claude Opus 4.5 (adversarial code review)
+
+| # | Severity | File | Issue | Resolution |
+|---|----------|------|-------|------------|
+| 1 | MEDIUM | `Matches.tsx` | `currentIndex` drift: optimistic update removes item from array AND `setCurrentIndex(prev+1)` increments, skipping every other match | **FIXED** — Removed `currentIndex` state; always show `matches[0]` since optimistic update shifts array |
+| 2 | LOW | `matches.py:223` | `flush()` without `commit()` | Acknowledged — matches codebase convention; session middleware handles commit |
+| 3 | LOW | `SwipeCard.tsx` / `MatchDetail.tsx` | Duplicated `confidenceColor` function | Acknowledged — trivial duplication across 2 files |
+| 4 | LOW | `matches.py:199` | `match_id` not validated as UUID format | Acknowledged — query returns None → 404 |
+| 5 | LOW | `Matches.tsx:46` | Keyboard handler doesn't check input focus | Acknowledged — no inputs on page currently |
+| 6 | LOW | `matches.ts:53` | Query key doesn't include page/perPage | Acknowledged — currently always defaults |
+| 7 | LOW | `test_matches.py` | Sync TestClient for async endpoints | Acknowledged — consistent with codebase pattern |
+
 ### Change Log
 
 - 2026-01-31: Implementation via MODERATE route with single gsd-executor
+- 2026-01-31: Code review — fixed MEDIUM currentIndex drift bug (1 fix applied, 6 LOW acknowledged)
 
 ### File List
 
