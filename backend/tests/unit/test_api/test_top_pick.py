@@ -66,6 +66,10 @@ def _make_job(job_id=None, title="Software Engineer", company="Acme Corp"):
         salary_max=180000,
         url="https://example.com/job/123",
         description="Build amazing software.",
+        employment_type=None,
+        h1b_sponsor_status=None,
+        posted_at=None,
+        source="indeed",
     )
 
 

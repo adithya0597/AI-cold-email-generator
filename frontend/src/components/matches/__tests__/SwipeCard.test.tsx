@@ -57,6 +57,10 @@ const mockMatch: MatchData = {
     salary_max: 200000,
     url: 'https://example.com/job',
     description: 'Build great software',
+    employment_type: null,
+    h1b_sponsor_status: null,
+    posted_at: null,
+    source: null,
   },
   created_at: '2025-06-15T12:00:00Z',
 };

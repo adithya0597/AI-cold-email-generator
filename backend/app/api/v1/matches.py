@@ -60,6 +60,10 @@ class JobSummary(BaseModel):
     salary_max: Optional[int] = None
     url: Optional[str] = None
     description: Optional[str] = None
+    employment_type: Optional[str] = None
+    h1b_sponsor_status: Optional[str] = None
+    posted_at: Optional[str] = None
+    source: Optional[str] = None
 
 
 class RationaleResponse(BaseModel):
@@ -130,6 +134,10 @@ def _match_to_response(match: Match) -> MatchResponse:
             salary_max=job.salary_max,
             url=job.url,
             description=job.description,
+            employment_type=job.employment_type if hasattr(job, 'employment_type') else None,
+            h1b_sponsor_status=job.h1b_sponsor_status.value if hasattr(job.h1b_sponsor_status, 'value') else (str(job.h1b_sponsor_status) if hasattr(job, 'h1b_sponsor_status') and job.h1b_sponsor_status else None),
+            posted_at=job.posted_at.isoformat() if hasattr(job, 'posted_at') and isinstance(job.posted_at, datetime) else (str(job.posted_at) if hasattr(job, 'posted_at') and job.posted_at else None),
+            source=job.source if hasattr(job, 'source') else None,
         ),
         created_at=match.created_at.isoformat() if isinstance(match.created_at, datetime) else str(match.created_at),
     )

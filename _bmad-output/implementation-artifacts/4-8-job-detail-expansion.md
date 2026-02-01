@@ -1,6 +1,6 @@
 # Story 4.8: Job Detail Expansion
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -24,28 +24,28 @@ so that **I can make informed decisions quickly**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend backend JobSummary schema (AC: #4)
-  - [ ] 1.1: Add `employment_type: Optional[str]`, `h1b_sponsor_status: Optional[str]`, `posted_at: Optional[str]`, and `source: Optional[str]` fields to `JobSummary` Pydantic model in `backend/app/api/v1/matches.py`
-  - [ ] 1.2: Update `_match_to_response` helper to populate the new fields from the Job ORM object (h1b_sponsor_status should return `.value` string, posted_at should return ISO format string or null)
-  - [ ] 1.3: Write backend tests for extended job response fields
+- [x] Task 1: Extend backend JobSummary schema (AC: #4)
+  - [x] 1.1: Add `employment_type: Optional[str]`, `h1b_sponsor_status: Optional[str]`, `posted_at: Optional[str]`, and `source: Optional[str]` fields to `JobSummary` Pydantic model in `backend/app/api/v1/matches.py`
+  - [x] 1.2: Update `_match_to_response` helper to populate the new fields from the Job ORM object (h1b_sponsor_status should return `.value` string, posted_at should return ISO format string or null)
+  - [x] 1.3: Write backend tests for extended job response fields
 
-- [ ] Task 2: Extend frontend TypeScript types (AC: #4)
-  - [ ] 2.1: Add `employment_type: string | null`, `h1b_sponsor_status: string | null`, `posted_at: string | null`, and `source: string | null` fields to `JobSummary` interface in `frontend/src/types/matches.ts`
+- [x] Task 2: Extend frontend TypeScript types (AC: #4)
+  - [x] 2.1: Add `employment_type: string | null`, `h1b_sponsor_status: string | null`, `posted_at: string | null`, and `source: string | null` fields to `JobSummary` interface in `frontend/src/types/matches.ts`
 
-- [ ] Task 3: Enhance MatchDetail component (AC: #1, #2, #3, #5)
-  - [ ] 3.1: Remove the 500-character truncation of `job.description` — show full description
-  - [ ] 3.2: Wrap the job description in a scrollable container (`max-h-64 overflow-y-auto`) for long descriptions
-  - [ ] 3.3: Add employment type display below description (if non-null): icon + text
-  - [ ] 3.4: Add posted date display in relative format (e.g., "Posted 3 days ago") — reuse or create a `formatRelativeDate` helper
-  - [ ] 3.5: Add job source display (e.g., "Source: Indeed") below posted date
-  - [ ] 3.6: Add H1B sponsorship badge: green for "verified", amber for "unverified", hidden for "unknown"/null
+- [x] Task 3: Enhance MatchDetail component (AC: #1, #2, #3, #5)
+  - [x] 3.1: Remove the 500-character truncation of `job.description` — show full description
+  - [x] 3.2: Wrap the job description in a scrollable container (`max-h-64 overflow-y-auto`) for long descriptions
+  - [x] 3.3: Add employment type display below description (if non-null): icon + text
+  - [x] 3.4: Add posted date display in relative format (e.g., "Posted 3 days ago") — reuse or create a `formatRelativeDate` helper
+  - [x] 3.5: Add job source display (e.g., "Source: Indeed") below posted date
+  - [x] 3.6: Add H1B sponsorship badge: green for "verified", amber for "unverified", hidden for "unknown"/null
 
-- [ ] Task 4: Write frontend tests (AC: #1, #2, #3, #6)
-  - [ ] 4.1: Test MatchDetail shows full description (not truncated)
-  - [ ] 4.2: Test MatchDetail shows employment type, posted date, source when available
-  - [ ] 4.3: Test MatchDetail hides optional fields when null
-  - [ ] 4.4: Test H1B badge renders correctly for "verified" and "unverified"
-  - [ ] 4.5: Test H1B badge hidden when status is "unknown" or null
+- [x] Task 4: Write frontend tests (AC: #1, #2, #3, #6)
+  - [x] 4.1: Test MatchDetail shows full description (not truncated)
+  - [x] 4.2: Test MatchDetail shows employment type, posted date, source when available
+  - [x] 4.3: Test MatchDetail hides optional fields when null
+  - [x] 4.4: Test H1B badge renders correctly for "verified" and "unverified"
+  - [x] 4.5: Test H1B badge hidden when status is "unknown" or null
 
 ## Dev Notes
 
@@ -209,14 +209,45 @@ frontend/src/services/matches.ts                                # Hooks unchange
 
 ### Agent Model Used
 
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
 ### Route Taken
+
+SIMPLE (score: 4/16)
 
 ### GSD Subagents Used
 
+none (direct execution)
+
 ### Debug Log References
+
+- 1 deviation: Updated mock `_make_job` helpers in test_matches.py and test_top_pick.py to include new fields (h1b_sponsor_status, employment_type, posted_at, source) to fix AttributeError failures
+- Updated 3 frontend test files (SwipeCard.test.tsx, Matches.test.tsx, TopPick.test.tsx) to add new fields to mock JobSummary objects
 
 ### Completion Notes List
 
+- Extended JobSummary Pydantic schema with 4 new optional fields: employment_type, h1b_sponsor_status, posted_at, source
+- Updated _match_to_response helper to populate new fields from Job ORM object
+- Extended frontend JobSummary TypeScript interface with matching fields
+- Enhanced MatchDetail component: full description (no truncation), scrollable container, employment type, posted date (relative format), job source, H1B sponsorship badge
+- 5 backend tests, 15 frontend tests (43 total frontend matches tests passing, 23 backend API tests passing)
+
 ### Change Log
 
+- 2026-01-31: Implementation via SIMPLE route (direct execution)
+
 ### File List
+
+**Created:**
+- `frontend/src/components/matches/__tests__/MatchDetail.test.tsx` — 15 frontend tests
+- `backend/tests/unit/test_api/test_job_detail_fields.py` — 5 backend tests
+
+**Modified:**
+- `backend/app/api/v1/matches.py` — Extended JobSummary schema + _match_to_response
+- `frontend/src/types/matches.ts` — Added 4 fields to JobSummary interface
+- `frontend/src/components/matches/MatchDetail.tsx` — Full description, metadata, H1B badge
+- `backend/tests/unit/test_api/test_matches.py` — Added new fields to _make_job mock
+- `backend/tests/unit/test_api/test_top_pick.py` — Added new fields to _make_job mock
+- `frontend/src/components/matches/__tests__/SwipeCard.test.tsx` — Added new fields to mock data
+- `frontend/src/components/matches/__tests__/Matches.test.tsx` — Added new fields to mock data
+- `frontend/src/components/matches/__tests__/TopPick.test.tsx` — Added new fields to mock data

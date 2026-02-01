@@ -115,7 +115,7 @@ development_status:
   4-5-match-rationale-generation: done
   4-6-swipe-card-interface: done
   4-7-top-pick-of-the-day-feature: done
-  4-8-job-detail-expansion: ready-for-dev
+  4-8-job-detail-expansion: review
   4-9-preference-learning-from-swipe-behavior: backlog
   4-10-job-matches-empty-state: backlog
   epic-4-retrospective: optional

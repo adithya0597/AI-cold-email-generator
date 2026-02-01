@@ -8,6 +8,10 @@ export interface JobSummary {
   salary_max: number | null;
   url: string | null;
   description: string | null;
+  employment_type: string | null;
+  h1b_sponsor_status: string | null;
+  posted_at: string | null;
+  source: string | null;
 }
 
 export interface Rationale {

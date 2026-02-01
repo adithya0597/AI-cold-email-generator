@@ -1,5 +1,5 @@
 /**
- * MatchDetail - Expanded view showing job description and match rationale.
+ * MatchDetail - Expanded view showing full job description, metadata, and match rationale.
  *
  * Displayed below the SwipeCard when the user taps/clicks the card
  * or presses Space. Animates in/out with framer-motion.
@@ -25,13 +25,22 @@ function confidenceBadgeColor(confidence: string): string {
   }
 }
 
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays} days ago`;
+}
+
 export default function MatchDetail({ match }: MatchDetailProps) {
   const { job, rationale } = match;
-  const truncatedDescription = job.description
-    ? job.description.length > 500
-      ? job.description.slice(0, 500) + '...'
-      : job.description
-    : 'No description available.';
 
   return (
     <motion.div
@@ -48,10 +57,64 @@ export default function MatchDetail({ match }: MatchDetailProps) {
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
             Job Description
           </h4>
-          <p className="text-sm text-gray-600 leading-relaxed" data-testid="job-description">
-            {truncatedDescription}
-          </p>
+          <div
+            className="text-sm text-gray-600 leading-relaxed max-h-64 overflow-y-auto"
+            data-testid="job-description"
+          >
+            {job.description || 'No description available.'}
+          </div>
         </div>
+
+        {/* Job Metadata */}
+        {(job.employment_type || job.posted_at || job.source) && (
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500" data-testid="job-metadata">
+            {job.employment_type && (
+              <span className="inline-flex items-center gap-1" data-testid="employment-type">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {job.employment_type}
+              </span>
+            )}
+            {job.posted_at && (
+              <span className="inline-flex items-center gap-1" data-testid="posted-at">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Posted {formatRelativeDate(job.posted_at)}
+              </span>
+            )}
+            {job.source && (
+              <span className="inline-flex items-center gap-1" data-testid="job-source">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                {job.source.charAt(0).toUpperCase() + job.source.slice(1)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* H1B Sponsorship Status */}
+        {job.h1b_sponsor_status && job.h1b_sponsor_status !== 'unknown' && (
+          <div data-testid="h1b-badge">
+            {job.h1b_sponsor_status === 'verified' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Verified H1B Sponsor
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Unverified Sponsorship
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Why this match? */}
         <div>
