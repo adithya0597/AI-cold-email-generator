@@ -12,9 +12,15 @@ Settings are imported from app.config which is safe (pydantic-settings,
 no async machinery).
 """
 
+import asyncio
+import logging
+
 from celery import Celery
+from celery.signals import task_failure
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Celery application
@@ -88,3 +94,36 @@ celery_app.conf.update(
 
 # Auto-discover tasks in the worker package.
 celery_app.autodiscover_tasks(["app.worker"])
+
+
+# ---------------------------------------------------------------------------
+# Dead-letter queue signal handler
+# ---------------------------------------------------------------------------
+
+
+@task_failure.connect
+def _on_task_failure(sender=None, task_id=None, args=None, kwargs=None,
+                     exception=None, **kw):
+    """Push failed tasks to the dead letter queue in Redis.
+
+    This signal fires after a task raises an unhandled exception (including
+    after all retries are exhausted).  The handler is synchronous (Celery
+    signals run in the worker thread) so we use ``asyncio.run()`` to call
+    the async DLQ writer.
+    """
+    from app.worker.dlq import handle_task_failure
+
+    task_name = sender.name if sender else "unknown"
+    try:
+        asyncio.run(
+            handle_task_failure(
+                task_id=task_id or "unknown",
+                task_name=task_name,
+                args=args or (),
+                kwargs=kwargs or {},
+                exc=exception or "unknown error",
+                queue="default",
+            )
+        )
+    except Exception:
+        logger.exception("Failed to write task %s to DLQ", task_id)
