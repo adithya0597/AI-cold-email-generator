@@ -60,6 +60,16 @@ to the job requirements. Use concrete examples from their profile.
 7. Return the word_count of the full letter (opening + body + closing).
 8. List personalization_sources: what specific details you referenced \
 (e.g., "company mission from description", "specific role requirement").
+
+PERSONALIZATION RULES:
+9. If the COMPANY CONTEXT section below contains company values, mission, \
+culture, or recent achievements, weave them naturally into the opening \
+and body. Reference at least 2 company-specific details when available.
+10. If no company context is available (section is empty or says "None"), \
+focus on the role itself and the team/product mentioned in the job posting. \
+NEVER fabricate company details, culture, or recent news.
+11. Always populate personalization_sources with what you actually used. \
+If you relied only on the job title and description, list those.
 """
 
 
@@ -222,6 +232,47 @@ class CoverLetterAgent(BaseAgent):
 
         return parsed
 
+    def _extract_company_context(self, job: dict[str, Any]) -> str:
+        """Extract company-specific context from job description.
+
+        Looks for mission statements, values, culture mentions, recent
+        achievements, and product/team details.  Returns a formatted
+        string for the prompt, or "None available" if nothing found.
+        """
+        description = (job.get("description") or "").lower()
+        company = job.get("company") or ""
+
+        signals: list[str] = []
+
+        # Check for mission / values / culture keywords
+        mission_keywords = ["mission", "values", "culture", "believe", "committed to", "passionate about", "our vision"]
+        for kw in mission_keywords:
+            if kw in description:
+                signals.append(f"Company mentions '{kw}' in description")
+                break
+
+        # Check for product / team mentions
+        product_keywords = ["our product", "our platform", "our team", "we build", "we are building", "our technology"]
+        for kw in product_keywords:
+            if kw in description:
+                signals.append(f"Description references specific product/team")
+                break
+
+        # Check for achievements / growth
+        growth_keywords = ["series", "funded", "growing", "award", "recognized", "customers", "revenue"]
+        for kw in growth_keywords:
+            if kw in description:
+                signals.append(f"Company mentions growth/achievements")
+                break
+
+        if company:
+            signals.append(f"Company name: {company}")
+
+        if not signals:
+            return "None available — use role-focused personalization only."
+
+        return "; ".join(signals)
+
     def _build_prompt(
         self, profile: dict[str, Any], job: dict[str, Any]
     ) -> str:
@@ -233,6 +284,10 @@ class CoverLetterAgent(BaseAgent):
         sections.append(f"Company: {job.get('company', '')}")
         sections.append(f"Location: {job.get('location', '')}")
         sections.append(f"Description:\n{(job.get('description') or '')[:3000]}")
+
+        # Company context extraction for personalization
+        company_context = self._extract_company_context(job)
+        sections.append(f"\n## COMPANY CONTEXT\n{company_context}")
 
         sections.append("\n## USER'S PROFILE DATA")
 

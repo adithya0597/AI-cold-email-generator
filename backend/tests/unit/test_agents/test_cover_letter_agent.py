@@ -415,3 +415,85 @@ class TestCoverLetterAPIEndpoint:
                 )
 
         assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test: Personalization (5-6 AC1, AC2, AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestCoverLetterPersonalization:
+    """Tests for company-specific personalization in cover letters."""
+
+    def test_prompt_includes_company_context_section(self):
+        """Prompt includes COMPANY CONTEXT section when job has rich description."""
+        from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+        agent = CoverLetterAgent()
+        job = {
+            "title": "Backend Engineer",
+            "company": "BigTech Inc",
+            "location": "SF",
+            "description": (
+                "At BigTech Inc, our mission is to democratize AI. "
+                "We are building a platform that serves millions of users. "
+                "Our team is passionate about scalable systems."
+            ),
+        }
+        prompt = agent._build_prompt(_sample_profile(), job)
+
+        assert "## COMPANY CONTEXT" in prompt
+        assert "None available" not in prompt
+
+    def test_company_context_extraction_with_mission(self):
+        """Extracts company context when description mentions mission/values."""
+        from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+        agent = CoverLetterAgent()
+        job = {
+            "company": "ValueCo",
+            "description": "Our mission is to make healthcare accessible to everyone.",
+        }
+        context = agent._extract_company_context(job)
+        assert "mission" in context.lower()
+        assert "ValueCo" in context
+
+    def test_company_context_extraction_with_product(self):
+        """Extracts product/team context from description."""
+        from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+        agent = CoverLetterAgent()
+        job = {
+            "company": "BuildCo",
+            "description": "We build the next generation of developer tools.",
+        }
+        context = agent._extract_company_context(job)
+        assert "product/team" in context.lower()
+
+    def test_graceful_fallback_minimal_description(self):
+        """Falls back gracefully when job description is minimal."""
+        from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+        agent = CoverLetterAgent()
+        job = {
+            "company": "",
+            "description": "Python developer needed.",
+        }
+        context = agent._extract_company_context(job)
+        assert "None available" in context
+
+    def test_prompt_includes_fallback_context_for_minimal_job(self):
+        """Prompt shows 'None available' for minimal job descriptions."""
+        from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+        agent = CoverLetterAgent()
+        job = {
+            "title": "Developer",
+            "company": "",
+            "location": "",
+            "description": "Need a developer.",
+        }
+        prompt = agent._build_prompt(_sample_profile(), job)
+
+        assert "## COMPANY CONTEXT" in prompt
+        assert "None available" in prompt
