@@ -1,6 +1,6 @@
 # Story 0.3: Clerk Authentication Integration
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
