@@ -24,19 +24,19 @@ so that **I can access JobPilot quickly without creating another password**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create user sync endpoint (AC: #3)
-  - [ ] 1.1: Create `backend/app/api/v1/auth.py` with `POST /api/v1/auth/sync` endpoint that: extracts clerk_id from JWT, creates User record if not exists (upsert by clerk_id), returns user data
-  - [ ] 1.2: Register auth router in `backend/app/api/v1/router.py`
+- [x] Task 1: Create user sync endpoint (AC: #3)
+  - [x] 1.1: Create `backend/app/api/v1/auth.py` with `POST /api/v1/auth/sync` endpoint that: extracts clerk_id from JWT, creates User record if not exists (upsert by clerk_id), returns user data
+  - [x] 1.2: Register auth router in `backend/app/api/v1/router.py`
 
-- [ ] Task 2: Add frontend auth routing (AC: #1, #4, #5, #6)
-  - [ ] 2.1: Create `frontend/src/components/auth/ProtectedRoute.tsx` that redirects to `/sign-in` if not authenticated, and calls user sync on first load
-  - [ ] 2.2: Create `frontend/src/pages/SignUp.tsx` with Clerk SignUp component
-  - [ ] 2.3: Update `frontend/src/App.tsx` to wrap protected routes with ProtectedRoute and add sign-in/sign-up routes
-  - [ ] 2.4: Add sign-out button/functionality to the layout or navigation
+- [x] Task 2: Add frontend auth routing (AC: #1, #4, #5, #6)
+  - [x] 2.1: Create `frontend/src/components/auth/ProtectedRoute.tsx` that redirects to `/sign-in` if not authenticated, and calls user sync on first load
+  - [x] 2.2: Create `frontend/src/pages/SignUp.tsx` with Clerk SignUp component
+  - [x] 2.3: Update `frontend/src/App.tsx` to wrap protected routes with ProtectedRoute and add sign-in/sign-up routes
+  - [x] 2.4: Add sign-out button/functionality to the layout or navigation
 
-- [ ] Task 3: Write tests (AC: #1-#6)
-  - [ ] 3.1: Create `backend/tests/unit/test_api/test_auth_sync.py` with tests for user sync endpoint: new user creation, returning user lookup, missing auth rejection
-  - [ ] 3.2: Create `frontend/src/components/auth/__tests__/ProtectedRoute.test.tsx` with tests for redirect behavior
+- [x] Task 3: Write tests (AC: #1-#6)
+  - [x] 3.1: Create `backend/tests/unit/test_api/test_auth_sync.py` with tests for user sync endpoint: new user creation, returning user lookup, missing auth rejection
+  - [x] 3.2: Create `frontend/src/components/auth/__tests__/ProtectedRoute.test.tsx` with tests for redirect behavior
 
 ## Dev Notes
 

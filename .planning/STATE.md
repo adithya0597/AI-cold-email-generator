@@ -10,16 +10,16 @@
 Phase: 4 of 9 (Job Discovery)
 Plan: 9 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-2 (Row-Level Security Policies)
+Last activity: 2026-02-01 -- Completed 0-3 (Clerk Authentication Integration)
 
 Progress: [██████████████████████████████░] ~50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
+- Total plans completed: 29
 - Average duration: ~6 min
-- Total execution time: ~171 min
+- Total execution time: ~176 min
 
 **By Phase:**
 
@@ -128,6 +128,9 @@ Progress: [███████████████████████
 - [0-2]: UUID validation over bind params for SET LOCAL -- async PG drivers don't reliably support bind params with SET
 - [0-2]: No WITH CHECK clause in RLS policies -- USING alone covers both read and write for FOR ALL
 - [0-2]: users and jobs tables excluded from RLS (not user-scoped)
+- [0-3]: ProtectedRoute uses Outlet pattern (layout route) instead of wrapper-children for cleaner nesting
+- [0-3]: User sync is fire-and-forget on mount -- non-blocking, failure logged but does not prevent route rendering
+- [0-3]: Placeholder email uses {clerk_id}@pending.sync format (Clerk manages real email)
 
 ### Pending Todos
 
@@ -144,5 +147,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 0-2 (Row-Level Security Policies). RLS on 8 user-scoped tables with user isolation + dev bypass policies, transaction-scoped context helper, 85 tests.
+Stopped at: Completed 0-3 (Clerk Authentication Integration). User sync endpoint, ProtectedRoute with auto-sync, new user onboarding redirect, 10 tests.
 Resume file: None
