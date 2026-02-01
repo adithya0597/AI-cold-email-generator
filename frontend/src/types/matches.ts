@@ -30,6 +30,20 @@ export interface MatchData {
   created_at: string;
 }
 
+export interface LearnedPreference {
+  id: string;
+  pattern_type: string;
+  pattern_value: string;
+  confidence: number;
+  occurrences: number;
+  status: 'pending' | 'acknowledged' | 'rejected';
+  created_at: string;
+}
+
+export interface LearnedPreferenceListResponse {
+  data: LearnedPreference[];
+}
+
 export interface MatchListResponse {
   data: MatchData[];
   meta: {
