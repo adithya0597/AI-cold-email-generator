@@ -435,6 +435,94 @@ async def get_document_diff(
     }
 
 
+# ---------------------------------------------------------------------------
+# ATS format recommendations (static best practices)
+# ---------------------------------------------------------------------------
+
+_ATS_FORMAT_RECOMMENDATIONS = [
+    "Use a single-column layout — multi-column formats confuse ATS parsers.",
+    "Use standard section headings: Summary, Experience, Education, Skills.",
+    "Avoid tables, text boxes, headers/footers, and images.",
+    "Use simple, common fonts (Arial, Calibri, Times New Roman).",
+    "Save as PDF to preserve formatting while remaining parseable.",
+    "Avoid special characters and symbols in section headings.",
+    "Use standard bullet points (•) rather than custom symbols.",
+    "Include full job titles and company names — avoid abbreviations.",
+]
+
+
+@router.get("/{document_id}/ats-analysis")
+async def get_ats_analysis(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Return ATS (Applicant Tracking System) analysis for a tailored resume.
+
+    Includes ATS score, keyword match analysis, warnings for low scores,
+    and format recommendations.
+    """
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        # Load the tailored document (verify ownership + type + has job_id)
+        doc_result = await session.execute(
+            text("""
+                SELECT d.id, d.type, d.content, d.job_id
+                FROM documents d
+                JOIN users u ON d.user_id = u.id
+                WHERE d.id = :doc_id::uuid
+                  AND u.clerk_id = :uid
+                  AND d.deleted_at IS NULL
+            """),
+            {"doc_id": document_id, "uid": user_id},
+        )
+        row = doc_result.mappings().first()
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found.",
+        )
+
+    if str(row["type"]) != "resume" or row["job_id"] is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ATS analysis is only available for tailored resumes (documents with a job_id).",
+        )
+
+    # Parse content JSON
+    try:
+        content = json.loads(row["content"]) if row["content"] else {}
+    except (json.JSONDecodeError, TypeError):
+        content = {}
+
+    ats_score = content.get("ats_score", 0)
+    keywords_matched = content.get("keywords_incorporated", [])
+    keywords_missing = content.get("keywords_missing", [])
+
+    total_keywords = len(keywords_matched) + len(keywords_missing)
+    match_rate = len(keywords_matched) / max(total_keywords, 1)
+
+    # Build warning if score < 70
+    warning = None
+    if ats_score < 70 and keywords_missing:
+        missing_list = ", ".join(keywords_missing[:10])
+        warning = f"Consider adding: {missing_list}"
+
+    return {
+        "document_id": str(row["id"]),
+        "ats_score": ats_score,
+        "keywords_matched": keywords_matched,
+        "keywords_missing": keywords_missing,
+        "match_rate": round(match_rate, 2),
+        "warning": warning,
+        "format_recommendations": _ATS_FORMAT_RECOMMENDATIONS,
+    }
+
+
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,

@@ -747,3 +747,191 @@ class TestDiffATSMetrics:
         assert "keywords_missing" in result
         assert result["keywords_missing"] == ["kubernetes"]
         assert "tailoring_rationale" in result
+
+
+# ---------------------------------------------------------------------------
+# ATS analysis helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_low_score_content():
+    """Return JSON content with ATS score below 70."""
+    return json.dumps({
+        "sections": [],
+        "keywords_incorporated": ["python"],
+        "keywords_missing": ["kubernetes", "docker", "aws", "terraform", "ci/cd"],
+        "ats_score": 45,
+        "tailoring_rationale": "Limited keyword match",
+    })
+
+
+# ---------------------------------------------------------------------------
+# Test: ATS analysis endpoint happy path (5-4 AC1, AC2, AC4, AC5)
+# ---------------------------------------------------------------------------
+
+
+class TestATSAnalysisHappyPath:
+    """Tests for GET /{document_id}/ats-analysis."""
+
+    @pytest.mark.asyncio
+    async def test_ats_analysis_returns_full_response(self):
+        """Returns score, keywords, match_rate, and recommendations."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": uuid4(),
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            result = await get_ats_analysis(document_id=str(uuid4()), user_id="user123")
+
+        assert result["ats_score"] == 82
+        assert result["keywords_matched"] == ["python", "fastapi", "backend"]
+        assert result["keywords_missing"] == ["kubernetes"]
+        assert result["match_rate"] == 0.75  # 3/(3+1)
+        assert result["warning"] is None  # Score >= 70
+        assert len(result["format_recommendations"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_format_recommendations_present(self):
+        """Format recommendations are a non-empty list of strings."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_tailored_content(),
+            "job_id": uuid4(),
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            result = await get_ats_analysis(document_id=str(uuid4()), user_id="user123")
+
+        recs = result["format_recommendations"]
+        assert isinstance(recs, list)
+        assert len(recs) >= 5
+        assert all(isinstance(r, str) for r in recs)
+
+
+# ---------------------------------------------------------------------------
+# Test: ATS low score warning (5-4 AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestATSLowScoreWarning:
+    """Tests for warning when ATS score < 70."""
+
+    @pytest.mark.asyncio
+    async def test_low_score_includes_warning(self):
+        """Score below 70 includes warning with missing keywords."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_low_score_content(),
+            "job_id": uuid4(),
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            result = await get_ats_analysis(document_id=str(uuid4()), user_id="user123")
+
+        assert result["ats_score"] == 45
+        assert result["warning"] is not None
+        assert "Consider adding" in result["warning"]
+        assert "kubernetes" in result["warning"]
+
+    @pytest.mark.asyncio
+    async def test_high_score_no_warning(self):
+        """Score >= 70 has no warning."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": _make_tailored_content(),  # ats_score=82
+            "job_id": uuid4(),
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            result = await get_ats_analysis(document_id=str(uuid4()), user_id="user123")
+
+        assert result["ats_score"] == 82
+        assert result["warning"] is None
+
+
+# ---------------------------------------------------------------------------
+# Test: ATS analysis authorization (5-4 AC6)
+# ---------------------------------------------------------------------------
+
+
+class TestATSAnalysisAuthorization:
+    """Tests for ATS analysis authorization."""
+
+    @pytest.mark.asyncio
+    async def test_wrong_user_gets_404(self):
+        """Returns 404 when document not owned by user."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = None
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            with pytest.raises(Exception) as exc_info:
+                await get_ats_analysis(document_id=str(uuid4()), user_id="wrong_user")
+
+        assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test: ATS analysis validation (5-4 AC7)
+# ---------------------------------------------------------------------------
+
+
+class TestATSAnalysisValidation:
+    """Tests for ATS analysis validation."""
+
+    @pytest.mark.asyncio
+    async def test_master_resume_returns_400(self):
+        """Returns 400 when requesting ATS analysis for a master resume."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_result = MagicMock()
+        mock_result.mappings.return_value.first.return_value = {
+            "id": uuid4(),
+            "type": "resume",
+            "content": "{}",
+            "job_id": None,
+        }
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.documents import get_ats_analysis
+
+            with pytest.raises(Exception) as exc_info:
+                await get_ats_analysis(document_id=str(uuid4()), user_id="user123")
+
+        assert exc_info.value.status_code == 400
+        assert "tailored" in str(exc_info.value.detail).lower()
