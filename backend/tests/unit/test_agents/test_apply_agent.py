@@ -92,7 +92,12 @@ class TestApplyAgentHappyPath:
         mock_record_sess.execute = AsyncMock()
         mock_record_sess.commit = AsyncMock()
 
-        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_record_cm]
+        # Activity recording
+        mock_activity_cm, mock_activity_sess = _mock_session_cm()
+        mock_activity_sess.execute = AsyncMock()
+        mock_activity_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_record_cm, mock_activity_cm]
 
         with (
             patch(
@@ -184,7 +189,12 @@ class TestApplyAgentDailyLimit:
         mock_rec_sess.execute = AsyncMock()
         mock_rec_sess.commit = AsyncMock()
 
-        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_rec_cm]
+        # Activity
+        mock_act_cm, mock_act_sess = _mock_session_cm()
+        mock_act_sess.execute = AsyncMock()
+        mock_act_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_rec_cm, mock_act_cm]
 
         with (
             patch(
@@ -415,3 +425,134 @@ class TestApplyAgentErrorHandling:
 
         assert result.action == "application_failed"
         assert result.data["error"] == "manual_required"
+
+
+# ---------------------------------------------------------------------------
+# Test: Submission confirmation activity (5-10 AC1, AC2)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentSubmissionConfirmation:
+    """Tests for activity recording on successful submission."""
+
+    @pytest.mark.asyncio
+    async def test_activity_recorded_on_success(self):
+        """Agent records agent_activity with job details on success."""
+        # Daily limit
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = _sample_job_row()
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        # Materials
+        mock_mat_cm, mock_mat_sess = _mock_session_cm()
+        mock_resume = MagicMock()
+        mock_resume.scalar.return_value = "resume-uuid"
+        mock_cl = MagicMock()
+        mock_cl.scalar.return_value = "cl-uuid"
+        mock_mat_sess.execute = AsyncMock(side_effect=[mock_resume, mock_cl])
+
+        # Record application
+        mock_rec_cm, mock_rec_sess = _mock_session_cm()
+        mock_rec_sess.execute = AsyncMock()
+        mock_rec_sess.commit = AsyncMock()
+
+        # Activity recording
+        mock_act_cm, mock_act_sess = _mock_session_cm()
+        mock_act_sess.execute = AsyncMock()
+        mock_act_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_rec_cm, mock_act_cm]
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "pro"},
+                },
+            ),
+            patch("app.db.engine.AsyncSessionLocal", side_effect=session_calls),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_submitted"
+
+        # Verify activity was recorded
+        activity_call = mock_act_sess.execute.call_args_list[0]
+        sql_params = activity_call[0][1]
+        assert sql_params["event_type"] == "agent.apply.completed"
+        assert sql_params["agent_type"] == "apply"
+        assert sql_params["severity"] == "info"
+        assert "Backend Engineer" in sql_params["title"]
+        assert "BigTech Inc" in sql_params["title"]
+
+    @pytest.mark.asyncio
+    async def test_activity_data_includes_required_fields(self):
+        """Activity data JSON includes job title, company, method, material IDs."""
+        import json
+
+        # Same setup as above but we inspect the data field
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = _sample_job_row()
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        mock_mat_cm, mock_mat_sess = _mock_session_cm()
+        mock_resume = MagicMock()
+        mock_resume.scalar.return_value = "resume-uuid"
+        mock_cl = MagicMock()
+        mock_cl.scalar.return_value = None
+        mock_mat_sess.execute = AsyncMock(side_effect=[mock_resume, mock_cl])
+
+        mock_rec_cm, mock_rec_sess = _mock_session_cm()
+        mock_rec_sess.execute = AsyncMock()
+        mock_rec_sess.commit = AsyncMock()
+
+        mock_act_cm, mock_act_sess = _mock_session_cm()
+        mock_act_sess.execute = AsyncMock()
+        mock_act_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_rec_cm, mock_act_cm]
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "pro"},
+                },
+            ),
+            patch("app.db.engine.AsyncSessionLocal", side_effect=session_calls),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        # Parse the data JSON from activity insert
+        activity_call = mock_act_sess.execute.call_args_list[0]
+        data_json = activity_call[0][1]["data"]
+        data = json.loads(data_json)
+
+        assert data["job_title"] == "Backend Engineer"
+        assert data["company"] == "BigTech Inc"
+        assert data["submission_method"] == "api"
+        assert data["resume_document_id"] == "resume-uuid"
+        assert data["cover_letter_document_id"] is None

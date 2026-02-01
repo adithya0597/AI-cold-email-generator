@@ -135,7 +135,15 @@ class ApplyAgent(BaseAgent):
             user_id, job_id, materials["resume_document_id"], method
         )
 
-        # 7. Build output
+        # 7. Record activity notification (fire-and-forget)
+        try:
+            await self._record_submission_activity(
+                user_id, job, method, materials, application_id
+            )
+        except Exception as exc:
+            logger.debug("Activity recording failed (non-critical): %s", exc)
+
+        # 8. Build output
         return AgentOutput(
             action="application_submitted",
             rationale=(
@@ -321,3 +329,57 @@ class ApplyAgent(BaseAgent):
             await session.commit()
 
         return app_id
+
+    async def _record_submission_activity(
+        self,
+        user_id: str,
+        job: dict[str, Any],
+        method: str,
+        materials: dict[str, Any],
+        application_id: str,
+    ) -> None:
+        """Record an agent activity for the successful submission.
+
+        Creates an entry in ``agent_activities`` visible in the activity feed
+        and usable for real-time notifications.
+        """
+        from uuid import uuid4
+
+        from sqlalchemy import text
+
+        from app.db.engine import AsyncSessionLocal
+
+        import json
+
+        activity_data = {
+            "application_id": application_id,
+            "job_title": job.get("title", "Unknown"),
+            "company": job.get("company", "Unknown"),
+            "submission_method": method,
+            "resume_document_id": materials.get("resume_document_id"),
+            "cover_letter_document_id": materials.get("cover_letter_document_id"),
+        }
+
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO agent_activities "
+                    "(id, user_id, event_type, agent_type, title, severity, data) "
+                    "VALUES (:id, "
+                    "(SELECT id FROM users WHERE clerk_id = :uid), "
+                    ":event_type, :agent_type, :title, :severity, :data)"
+                ),
+                {
+                    "id": str(uuid4()),
+                    "uid": user_id,
+                    "event_type": "agent.apply.completed",
+                    "agent_type": "apply",
+                    "title": (
+                        f"Applied to {job.get('title', 'Unknown')} at "
+                        f"{job.get('company', 'Unknown')}"
+                    ),
+                    "severity": "info",
+                    "data": json.dumps(activity_data),
+                },
+            )
+            await session.commit()
