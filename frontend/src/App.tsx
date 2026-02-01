@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers, FiLogIn } from 'react-icons/fi';
+
+import { initSentry } from './lib/sentry';
 
 import EmergencyBrake from './components/EmergencyBrake';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -24,6 +27,9 @@ import BriefingSettingsPage from './pages/BriefingSettings';
 import Matches from './pages/Matches';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
+
+// Initialise Sentry before the React tree renders.
+initSentry();
 
 function App() {
   const [healthStatus, setHealthStatus] = useState<{ status: string } | null>(null);
@@ -46,6 +52,7 @@ function App() {
   };
 
   return (
+    <Sentry.ErrorBoundary fallback={<p>Something went wrong</p>}>
     <Router>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         {/* Navigation */}
@@ -312,6 +319,7 @@ function App() {
         />
       </div>
     </Router>
+    </Sentry.ErrorBoundary>
   );
 }
 

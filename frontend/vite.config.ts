@@ -1,9 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is available (CI/prod builds).
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            org: 'jobpilot',
+            project: 'jobpilot-frontend',
+          }),
+        ]
+      : []),
+  ],
+  build: {
+    sourcemap: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
