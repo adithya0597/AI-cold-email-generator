@@ -131,7 +131,7 @@ development_status:
   5-5-cover-letter-generator: done
   5-6-cover-letter-personalization: done
   5-7-apply-agent-implementation: done
-  5-8-approval-queue-for-applications: backlog
+  5-8-approval-queue-for-applications: done
   5-9-one-tap-approval-from-briefing: backlog
   5-10-application-submission-confirmation: backlog
   5-11-application-failure-handling: backlog
