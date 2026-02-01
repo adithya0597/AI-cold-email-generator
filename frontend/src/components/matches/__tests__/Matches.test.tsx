@@ -35,6 +35,12 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }));
 
+// Mock learned preferences service
+vi.mock('../../../services/learnedPreferences', () => ({
+  useLearnedPreferences: () => ({ data: [], isLoading: false }),
+  useUpdateLearnedPreference: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 // Mock services
 const mockMutate = vi.fn();
 vi.mock('../../../services/matches', () => ({

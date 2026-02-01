@@ -11,6 +11,7 @@ import { AnimatePresence } from 'framer-motion';
 import SwipeCard from '../components/matches/SwipeCard';
 import MatchDetail from '../components/matches/MatchDetail';
 import TopPickCard from '../components/matches/TopPickCard';
+import LearnedPreferenceBanner from '../components/matches/LearnedPreferenceBanner';
 import { useMatches, useTopPick, useUpdateMatchStatus } from '../services/matches';
 
 export default function Matches() {
@@ -147,6 +148,9 @@ export default function Matches() {
           {matches.length} match{matches.length !== 1 ? 'es' : ''} to review
         </p>
       </div>
+
+      {/* Learned Preferences Banner */}
+      <LearnedPreferenceBanner />
 
       {/* Top Pick */}
       {topPick && (
