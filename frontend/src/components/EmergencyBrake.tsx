@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { createReconnect, type ReconnectController } from '../lib/ws-reconnect';
 import { useApiClient } from '../services/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -47,6 +48,7 @@ export default function EmergencyBrake() {
   const wsRef = useRef<WebSocket | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRef = useRef<ReconnectController>(createReconnect());
 
   const userId = user?.id;
 
@@ -89,6 +91,10 @@ export default function EmergencyBrake() {
       `${WS_BASE_URL}/api/v1/ws/agents/${userId}?token=${encodeURIComponent(token)}`
     );
 
+    ws.onopen = () => {
+      reconnectRef.current.reset();
+    };
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -108,10 +114,10 @@ export default function EmergencyBrake() {
 
     ws.onclose = () => {
       wsRef.current = null;
-      // Auto-reconnect after 3 seconds
+      const delay = reconnectRef.current.nextDelay();
       reconnectTimerRef.current = setTimeout(() => {
         connectWebSocket();
-      }, 3000);
+      }, delay);
     };
 
     ws.onerror = () => {
