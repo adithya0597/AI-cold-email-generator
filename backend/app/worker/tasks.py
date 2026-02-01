@@ -161,9 +161,12 @@ def agent_apply(self, user_id: str, task_data: dict) -> Dict[str, Any]:
             celery_task_id=self.request.id,
         )
         try:
-            # TODO(Phase 8): Instantiate and run ApplyAgent
-            trace.update(output={"status": "not_implemented"})
-            return {"status": "not_implemented", "agent": "apply"}
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.run(user_id, task_data)
+            trace.update(output=result.to_dict())
+            return result.to_dict()
         except Exception as exc:
             trace.update(level="ERROR", status_message=str(exc))
             raise

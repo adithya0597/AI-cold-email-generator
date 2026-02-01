@@ -1,0 +1,417 @@
+"""Tests for the Apply Agent (Story 5-7).
+
+Covers: application recording, daily limit enforcement, submission method
+selection, missing materials handling, and error cases.
+"""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+def _mock_session_cm():
+    """Create a mock async session context manager."""
+    mock_sess = AsyncMock()
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_sess)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    return mock_cm, mock_sess
+
+
+def _sample_profile():
+    return {
+        "headline": "Senior Software Engineer",
+        "skills": ["Python", "FastAPI", "PostgreSQL"],
+        "experience": [
+            {
+                "title": "Senior Software Engineer",
+                "company": "TechCorp",
+                "start_date": "2021-01",
+                "end_date": "Present",
+                "description": "Built microservices",
+            },
+        ],
+    }
+
+
+def _sample_job_row(url="https://example.com/apply"):
+    return {
+        "id": "job-uuid-123",
+        "title": "Backend Engineer",
+        "company": "BigTech Inc",
+        "description": "We need a Python developer.",
+        "location": "San Francisco, CA",
+        "url": url,
+        "salary_min": 150000,
+        "salary_max": 200000,
+        "employment_type": "full-time",
+        "remote": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Test: Happy path (AC1, AC2)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentHappyPath:
+    """Tests for agent happy path."""
+
+    @pytest.mark.asyncio
+    async def test_execute_records_application_successfully(self):
+        """Agent records application and returns success output."""
+        # Daily limit check: 2 applications today (under limit)
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 2
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job load
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = _sample_job_row()
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        # Materials: resume found, cover letter found
+        mock_mat_cm, mock_mat_sess = _mock_session_cm()
+        mock_resume_result = MagicMock()
+        mock_resume_result.scalar.return_value = "resume-doc-uuid"
+        mock_cl_result = MagicMock()
+        mock_cl_result.scalar.return_value = "cl-doc-uuid"
+        mock_mat_sess.execute = AsyncMock(
+            side_effect=[mock_resume_result, mock_cl_result]
+        )
+
+        # Record application
+        mock_record_cm, mock_record_sess = _mock_session_cm()
+        mock_record_sess.execute = AsyncMock()
+        mock_record_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_record_cm]
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "pro"},
+                },
+            ),
+            patch("app.db.engine.AsyncSessionLocal", side_effect=session_calls),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_submitted"
+        assert result.data["application_id"]
+        assert result.data["job_id"] == "job-uuid-123"
+        assert result.data["submission_method"] == "api"
+        assert result.data["resume_document_id"] == "resume-doc-uuid"
+        assert result.data["cover_letter_document_id"] == "cl-doc-uuid"
+        assert result.confidence == 0.9
+
+
+# ---------------------------------------------------------------------------
+# Test: Daily limit enforcement (AC4)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentDailyLimit:
+    """Tests for daily application limit enforcement."""
+
+    @pytest.mark.asyncio
+    async def test_free_tier_limit_reached(self):
+        """Agent refuses when free tier user hits 5 daily applications."""
+        mock_cm, mock_sess = _mock_session_cm()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 5  # At limit
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "daily_limit_reached"
+        assert result.data["daily_limit"] == 5
+        assert result.data["today_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_pro_tier_limit_not_reached(self):
+        """Pro tier user with 24 applications today can still apply."""
+        # Daily limit: 24 < 25
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 24
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job load
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = _sample_job_row()
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        # Materials
+        mock_mat_cm, mock_mat_sess = _mock_session_cm()
+        mock_resume = MagicMock()
+        mock_resume.scalar.return_value = "resume-id"
+        mock_cl = MagicMock()
+        mock_cl.scalar.return_value = None
+        mock_mat_sess.execute = AsyncMock(side_effect=[mock_resume, mock_cl])
+
+        # Record
+        mock_rec_cm, mock_rec_sess = _mock_session_cm()
+        mock_rec_sess.execute = AsyncMock()
+        mock_rec_sess.commit = AsyncMock()
+
+        session_calls = [mock_limit_cm, mock_job_cm, mock_mat_cm, mock_rec_cm]
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "pro"},
+                },
+            ),
+            patch("app.db.engine.AsyncSessionLocal", side_effect=session_calls),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_submitted"
+
+    def test_daily_limits_constants(self):
+        """Verify daily limit constants match spec."""
+        from app.agents.pro.apply_agent import DAILY_APPLICATION_LIMITS
+
+        assert DAILY_APPLICATION_LIMITS["free"] == 5
+        assert DAILY_APPLICATION_LIMITS["pro"] == 25
+        assert DAILY_APPLICATION_LIMITS["h1b_pro"] == 25
+        assert DAILY_APPLICATION_LIMITS["career_insurance"] == 50
+        assert DAILY_APPLICATION_LIMITS["enterprise"] == 100
+
+
+# ---------------------------------------------------------------------------
+# Test: Submission method selection (AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentMethodSelection:
+    """Tests for submission method selection."""
+
+    def test_api_method_when_url_present(self):
+        """Selects 'api' when job has application URL."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {"url": "https://example.com/apply", "description": "Job desc"}
+        assert agent._select_submission_method(job) == "api"
+
+    def test_email_fallback_when_email_in_description(self):
+        """Selects 'email_fallback' when description has email."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {
+            "url": "",
+            "description": "Send resume to hr@bigtech.com for consideration.",
+        }
+        assert agent._select_submission_method(job) == "email_fallback"
+
+    def test_manual_required_when_no_url_or_email(self):
+        """Returns 'manual_required' when no automated method available."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {"url": "", "description": "Apply through our internal portal."}
+        assert agent._select_submission_method(job) == "manual_required"
+
+    def test_api_takes_priority_over_email(self):
+        """When both URL and email present, api takes priority."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {
+            "url": "https://example.com/apply",
+            "description": "Or email hr@bigtech.com",
+        }
+        assert agent._select_submission_method(job) == "api"
+
+
+# ---------------------------------------------------------------------------
+# Test: Error handling
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentErrorHandling:
+    """Tests for agent error handling."""
+
+    @pytest.mark.asyncio
+    async def test_missing_job_id_returns_failure(self):
+        """Agent returns failure when no job_id provided."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        result = await agent.execute("user123", {})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "missing_job_id"
+
+    @pytest.mark.asyncio
+    async def test_empty_profile_returns_failure(self):
+        """Agent returns failure when user has no profile data."""
+        with patch(
+            "app.agents.orchestrator.get_user_context",
+            new_callable=AsyncMock,
+            return_value={"profile": {}, "preferences": {}},
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "empty_profile"
+
+    @pytest.mark.asyncio
+    async def test_job_not_found_returns_failure(self):
+        """Agent returns failure when job doesn't exist."""
+        # Limit check passes
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job not found
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = None
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch(
+                "app.db.engine.AsyncSessionLocal",
+                side_effect=[mock_limit_cm, mock_job_cm],
+            ),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "nonexistent"})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "job_not_found"
+
+    @pytest.mark.asyncio
+    async def test_missing_materials_returns_failure(self):
+        """Agent returns failure when no resume available for this job."""
+        # Limit check passes
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job found
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = _sample_job_row()
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        # Materials: no resume
+        mock_mat_cm, mock_mat_sess = _mock_session_cm()
+        mock_resume = MagicMock()
+        mock_resume.scalar.return_value = None
+        mock_mat_sess.execute = AsyncMock(return_value=mock_resume)
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch(
+                "app.db.engine.AsyncSessionLocal",
+                side_effect=[mock_limit_cm, mock_job_cm, mock_mat_cm],
+            ),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "missing_materials"
+
+    @pytest.mark.asyncio
+    async def test_manual_required_returns_failure(self):
+        """Agent returns failure when no automated method available."""
+        # Limit check passes
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        # Job with no URL and no email
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        job = _sample_job_row(url="")
+        job["description"] = "Apply through our portal."
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = job
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch(
+                "app.db.engine.AsyncSessionLocal",
+                side_effect=[mock_limit_cm, mock_job_cm],
+            ),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_failed"
+        assert result.data["error"] == "manual_required"
