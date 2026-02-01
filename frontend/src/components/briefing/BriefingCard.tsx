@@ -299,34 +299,84 @@ export default function BriefingCard({
           </ExpandableSection>
         )}
 
-        {content.new_matches && content.new_matches.length > 0 && (
-          <ExpandableSection
-            title="New Matches"
-            icon={FiBriefcase}
-            badge={content.new_matches.length}
-          >
-            <div className="space-y-3">
-              {content.new_matches.map((match, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {match.title}
-                    </p>
-                    <p className="text-xs text-gray-500">{match.company}</p>
+        {content.new_matches && content.new_matches.length > 0 && (() => {
+          // Identify the highest-scored match as "top pick"
+          let topPickIdx = -1;
+          let topPickScore = -1;
+          content.new_matches.forEach((m, i) => {
+            if (m.match_score !== undefined && m.match_score > topPickScore) {
+              topPickScore = m.match_score;
+              topPickIdx = i;
+            }
+          });
+          const topMatch = topPickIdx >= 0 ? content.new_matches[topPickIdx] : null;
+          const otherMatches = content.new_matches.filter((_, i) => i !== topPickIdx);
+
+          return (
+            <ExpandableSection
+              title="New Matches"
+              icon={FiBriefcase}
+              badge={content.new_matches.length}
+            >
+              <div className="space-y-3">
+                {/* Top Pick highlight */}
+                {topMatch && (
+                  <div
+                    className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg"
+                    data-testid="briefing-top-pick"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FiStar className="h-4 w-4 text-indigo-600 fill-indigo-600 shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {topMatch.title}
+                          </p>
+                          <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+                            Top Pick
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">{topMatch.company}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {topMatch.match_score !== undefined && (
+                        <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                          {topMatch.match_score}% match
+                        </span>
+                      )}
+                      <Link
+                        to="/matches"
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+                      >
+                        Review Now &rarr;
+                      </Link>
+                    </div>
                   </div>
-                  {match.match_score !== undefined && (
-                    <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
-                      {match.match_score}% match
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </ExpandableSection>
-        )}
+                )}
+                {/* Remaining matches */}
+                {otherMatches.map((match, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {match.title}
+                      </p>
+                      <p className="text-xs text-gray-500">{match.company}</p>
+                    </div>
+                    {match.match_score !== undefined && (
+                      <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                        {match.match_score}% match
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ExpandableSection>
+          );
+        })()}
 
         {content.activity_log && content.activity_log.length > 0 && (
           <ExpandableSection title="Activity Log" icon={FiActivity}>
