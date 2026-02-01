@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/settings/integrations/gmail/callback"
 
+    # --- Microsoft OAuth (Outlook integration) ---
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_REDIRECT_URI: str = "http://localhost:3000/settings/integrations/outlook/callback"
+
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:3000"
 

@@ -146,7 +146,7 @@ development_status:
   epic-6: in-progress
   6-1-pipeline-agent-implementation: done
   6-2-gmail-oauth-integration: done
-  6-3-outlook-oauth-integration: backlog
+  6-3-outlook-oauth-integration: done
   6-4-email-status-detection: backlog
   6-5-kanban-pipeline-view: backlog
   6-6-pipeline-list-view: backlog

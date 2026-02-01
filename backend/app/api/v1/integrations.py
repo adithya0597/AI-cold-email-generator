@@ -166,3 +166,104 @@ async def disconnect_gmail(
         )
 
     return DisconnectResponse(disconnected=True)
+
+
+# ---------------------------------------------------------------------------
+# Outlook endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/outlook/auth-url", response_model=AuthUrlResponse)
+async def get_outlook_auth_url(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return the Microsoft OAuth authorization URL for Outlook."""
+    from app.services.outlook_service import build_auth_url
+
+    auth_url = build_auth_url(state=user_id)
+    return AuthUrlResponse(auth_url=auth_url)
+
+
+@router.post("/outlook/callback", response_model=CallbackResponse)
+async def outlook_oauth_callback(
+    body: CallbackRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Handle Microsoft OAuth callback — exchange code for tokens and store."""
+    from app.services import outlook_service
+
+    try:
+        tokens = await outlook_service.exchange_code_for_tokens(body.code)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"OAuth token exchange failed: {exc}",
+        )
+
+    access_token = tokens.get("access_token", "")
+    refresh_token = tokens.get("refresh_token")
+    expires_in = tokens.get("expires_in")
+
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No access token received from Microsoft",
+        )
+
+    try:
+        email_address = await outlook_service.get_user_email(access_token)
+    except ValueError:
+        email_address = ""
+
+    connection_id = await outlook_service.store_connection(
+        user_id=user_id,
+        email_address=email_address,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+    )
+
+    return CallbackResponse(
+        connection_id=connection_id,
+        email_address=email_address,
+        status="active",
+    )
+
+
+@router.get("/outlook/status", response_model=ConnectionStatusResponse)
+async def get_outlook_status(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Get the current Outlook connection status for the user."""
+    from app.services.outlook_service import get_connection_status
+
+    conn = await get_connection_status(user_id)
+
+    if conn is None:
+        return ConnectionStatusResponse(connected=False)
+
+    return ConnectionStatusResponse(
+        connected=True,
+        email_address=conn["email_address"],
+        status=conn["status"],
+        connected_at=conn["connected_at"],
+        last_sync_at=conn["last_sync_at"],
+    )
+
+
+@router.post("/outlook/disconnect", response_model=DisconnectResponse)
+async def disconnect_outlook(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Disconnect Outlook integration for the user."""
+    from app.services.outlook_service import disconnect
+
+    disconnected = await disconnect(user_id)
+
+    if not disconnected:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active Outlook connection found",
+        )
+
+    return DisconnectResponse(disconnected=True)
