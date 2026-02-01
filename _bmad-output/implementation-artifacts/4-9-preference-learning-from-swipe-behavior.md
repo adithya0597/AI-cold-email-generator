@@ -1,6 +1,6 @@
 # Story 4.9: Preference Learning from Swipe Behavior
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -287,14 +287,54 @@ frontend/src/components/matches/TopPickCard.tsx     # Top pick is stable
 
 ### Agent Model Used
 
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
 ### Route Taken
+
+MODERATE (score: 8/16)
 
 ### GSD Subagents Used
 
+gsd-executor
+
 ### Debug Log References
+
+- 1 deviation: Added learnedPreferences mock to existing Matches.test.tsx and TopPick.test.tsx to prevent import errors from LearnedPreferenceBanner integration
 
 ### Completion Notes List
 
+- Added SwipeEvent model (append-only, denormalized job attributes) and LearnedPreference model (soft-deletable) to models.py
+- Created Supabase migration 00002 for both tables with indexes
+- Added swipe event recording in update_match_status after status change
+- Created preference_learning.py service with detect_patterns() and apply_learned_preferences()
+- Created learned_preferences.py API router with GET and PATCH endpoints, registered in router.py
+- Added LearnedPreference TypeScript interface and TanStack Query hooks
+- Created LearnedPreferenceBanner component with Accept/Dismiss UI, integrated into Matches page
+- 22 new backend tests (swipe events, pattern detection, score adjustment, API endpoints)
+- 7 new frontend tests (banner rendering, accept/dismiss, hidden when empty)
+
 ### Change Log
 
+- 2026-01-31: Implementation via MODERATE route (gsd-executor)
+
 ### File List
+
+**Created:**
+- `backend/app/services/preference_learning.py` — detect_patterns + apply_learned_preferences
+- `backend/app/api/v1/learned_preferences.py` — GET + PATCH endpoints
+- `backend/tests/unit/test_api/test_learned_prefs.py` — 8 API tests
+- `backend/tests/unit/test_api/test_swipe_events.py` — 4 swipe event tests
+- `backend/tests/unit/test_services/test_preference_learning.py` — 10 service tests
+- `frontend/src/services/learnedPreferences.ts` — TanStack Query hooks
+- `frontend/src/components/matches/LearnedPreferenceBanner.tsx` — UI component
+- `frontend/src/components/matches/__tests__/LearnedPreferenceBanner.test.tsx` — 7 component tests
+- `supabase/migrations/00002_swipe_events_learned_preferences.sql` — DB migration
+
+**Modified:**
+- `backend/app/db/models.py` — Added SwipeEvent, LearnedPreference, LearnedPreferenceStatus
+- `backend/app/api/v1/matches.py` — Added swipe event recording after status update
+- `backend/app/api/v1/router.py` — Registered learned_preferences router
+- `frontend/src/types/matches.ts` — Added LearnedPreference interface
+- `frontend/src/pages/Matches.tsx` — Integrated LearnedPreferenceBanner
+- `frontend/src/components/matches/__tests__/Matches.test.tsx` — Added learnedPreferences mock
+- `frontend/src/components/matches/__tests__/TopPick.test.tsx` — Added learnedPreferences mock
