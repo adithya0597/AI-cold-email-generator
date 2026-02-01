@@ -10,13 +10,25 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import SwipeCard from '../components/matches/SwipeCard';
 import MatchDetail from '../components/matches/MatchDetail';
-import { useMatches, useUpdateMatchStatus } from '../services/matches';
+import TopPickCard from '../components/matches/TopPickCard';
+import { useMatches, useTopPick, useUpdateMatchStatus } from '../services/matches';
 
 export default function Matches() {
   const { data, isLoading, isError } = useMatches('new');
+  const { data: topPick } = useTopPick();
   const updateStatus = useUpdateMatchStatus();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const handleTopPickSave = useCallback(() => {
+    if (!topPick) return;
+    updateStatus.mutate({ matchId: topPick.id, status: 'saved' });
+  }, [topPick, updateStatus]);
+
+  const handleTopPickDismiss = useCallback(() => {
+    if (!topPick) return;
+    updateStatus.mutate({ matchId: topPick.id, status: 'dismissed' });
+  }, [topPick, updateStatus]);
 
   const matches = data?.data ?? [];
   const currentMatch = matches[0] ?? null;
@@ -135,6 +147,17 @@ export default function Matches() {
           {matches.length} match{matches.length !== 1 ? 'es' : ''} to review
         </p>
       </div>
+
+      {/* Top Pick */}
+      {topPick && (
+        <div className="mb-8">
+          <TopPickCard
+            match={topPick}
+            onSave={handleTopPickSave}
+            onDismiss={handleTopPickDismiss}
+          />
+        </div>
+      )}
 
       {/* Card stack */}
       <div className="relative w-full max-w-md mx-auto">
