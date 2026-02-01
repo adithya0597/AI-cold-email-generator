@@ -46,7 +46,7 @@ development_status:
   epic-0: in-progress
   0-1-database-schema-foundation: done
   0-2-row-level-security-policies: done
-  0-3-clerk-authentication-integration: backlog
+  0-3-clerk-authentication-integration: ready-for-dev
   0-4-api-foundation-with-versioning: backlog
   0-5-redis-cache-and-queue-setup: backlog
   0-6-celery-worker-infrastructure: backlog
