@@ -57,7 +57,7 @@ development_status:
   0-11-email-service-configuration: done
   0-12-ci-cd-pipeline-with-automated-tests: done
   0-13-supabase-storage-configuration: done
-  0-14-performance-baseline-establishment: backlog
+  0-14-performance-baseline-establishment: done
   0-15-gdpr-data-portability-endpoints: backlog
   epic-0-retrospective: optional
 
