@@ -322,6 +322,11 @@ class TestApplyAgentErrorHandling:
         mock_job_result.mappings.return_value.first.return_value = None
         mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
 
+        # Failure activity
+        mock_fail_cm, mock_fail_sess = _mock_session_cm()
+        mock_fail_sess.execute = AsyncMock()
+        mock_fail_sess.commit = AsyncMock()
+
         with (
             patch(
                 "app.agents.orchestrator.get_user_context",
@@ -333,7 +338,7 @@ class TestApplyAgentErrorHandling:
             ),
             patch(
                 "app.db.engine.AsyncSessionLocal",
-                side_effect=[mock_limit_cm, mock_job_cm],
+                side_effect=[mock_limit_cm, mock_job_cm, mock_fail_cm],
             ),
         ):
             from app.agents.pro.apply_agent import ApplyAgent
@@ -365,6 +370,11 @@ class TestApplyAgentErrorHandling:
         mock_resume.scalar.return_value = None
         mock_mat_sess.execute = AsyncMock(return_value=mock_resume)
 
+        # Failure activity
+        mock_fail_cm, mock_fail_sess = _mock_session_cm()
+        mock_fail_sess.execute = AsyncMock()
+        mock_fail_sess.commit = AsyncMock()
+
         with (
             patch(
                 "app.agents.orchestrator.get_user_context",
@@ -376,7 +386,7 @@ class TestApplyAgentErrorHandling:
             ),
             patch(
                 "app.db.engine.AsyncSessionLocal",
-                side_effect=[mock_limit_cm, mock_job_cm, mock_mat_cm],
+                side_effect=[mock_limit_cm, mock_job_cm, mock_mat_cm, mock_fail_cm],
             ),
         ):
             from app.agents.pro.apply_agent import ApplyAgent
@@ -404,6 +414,11 @@ class TestApplyAgentErrorHandling:
         mock_job_result.mappings.return_value.first.return_value = job
         mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
 
+        # Failure activity
+        mock_fail_cm, mock_fail_sess = _mock_session_cm()
+        mock_fail_sess.execute = AsyncMock()
+        mock_fail_sess.commit = AsyncMock()
+
         with (
             patch(
                 "app.agents.orchestrator.get_user_context",
@@ -415,7 +430,7 @@ class TestApplyAgentErrorHandling:
             ),
             patch(
                 "app.db.engine.AsyncSessionLocal",
-                side_effect=[mock_limit_cm, mock_job_cm],
+                side_effect=[mock_limit_cm, mock_job_cm, mock_fail_cm],
             ),
         ):
             from app.agents.pro.apply_agent import ApplyAgent
@@ -556,3 +571,105 @@ class TestApplyAgentSubmissionConfirmation:
         assert data["submission_method"] == "api"
         assert data["resume_document_id"] == "resume-uuid"
         assert data["cover_letter_document_id"] is None
+
+
+# ---------------------------------------------------------------------------
+# Test: Failure activity recording (5-11 AC1, AC2)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentFailureActivity:
+    """Tests for failure activity recording."""
+
+    @pytest.mark.asyncio
+    async def test_failure_activity_recorded_for_manual_required(self):
+        """Failure activity is recorded with warning severity for manual_required."""
+        import json
+
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        job = _sample_job_row(url="")
+        job["description"] = "Apply via internal portal."
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = job
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        mock_fail_cm, mock_fail_sess = _mock_session_cm()
+        mock_fail_sess.execute = AsyncMock()
+        mock_fail_sess.commit = AsyncMock()
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch(
+                "app.db.engine.AsyncSessionLocal",
+                side_effect=[mock_limit_cm, mock_job_cm, mock_fail_cm],
+            ),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "job-uuid-123"})
+
+        assert result.action == "application_failed"
+
+        # Verify failure activity was recorded
+        fail_call = mock_fail_sess.execute.call_args_list[0]
+        params = fail_call[0][1]
+        assert params["event_type"] == "agent.apply.failed"
+        assert params["severity"] == "warning"
+        assert "manual_required" in params["title"]
+
+        data = json.loads(params["data"])
+        assert data["error"] == "manual_required"
+        assert data["job_title"] == "Backend Engineer"
+
+    @pytest.mark.asyncio
+    async def test_failure_does_not_create_application_record(self):
+        """Failed applications don't insert into applications table (don't count against limit)."""
+        mock_limit_cm, mock_limit_sess = _mock_session_cm()
+        mock_limit_result = MagicMock()
+        mock_limit_result.scalar.return_value = 0
+        mock_limit_sess.execute = AsyncMock(return_value=mock_limit_result)
+
+        mock_job_cm, mock_job_sess = _mock_session_cm()
+        mock_job_result = MagicMock()
+        mock_job_result.mappings.return_value.first.return_value = None
+        mock_job_sess.execute = AsyncMock(return_value=mock_job_result)
+
+        mock_fail_cm, mock_fail_sess = _mock_session_cm()
+        mock_fail_sess.execute = AsyncMock()
+        mock_fail_sess.commit = AsyncMock()
+
+        with (
+            patch(
+                "app.agents.orchestrator.get_user_context",
+                new_callable=AsyncMock,
+                return_value={
+                    "profile": _sample_profile(),
+                    "preferences": {"tier": "free"},
+                },
+            ),
+            patch(
+                "app.db.engine.AsyncSessionLocal",
+                side_effect=[mock_limit_cm, mock_job_cm, mock_fail_cm],
+            ),
+        ):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            result = await agent.execute("user123", {"job_id": "nonexistent"})
+
+        assert result.action == "application_failed"
+        # Only 3 sessions used: limit check, job load, failure activity
+        # NO applications table insert occurred

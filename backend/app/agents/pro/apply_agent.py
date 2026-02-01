@@ -98,6 +98,9 @@ class ApplyAgent(BaseAgent):
         # 3. Load job details
         job = await self._load_job(job_id)
         if not job:
+            await self._record_failure_activity(
+                user_id, "job_not_found", job_id=job_id
+            )
             return AgentOutput(
                 action="application_failed",
                 rationale=f"Job {job_id} not found",
@@ -109,6 +112,9 @@ class ApplyAgent(BaseAgent):
         method = self._select_submission_method(job)
 
         if method == "manual_required":
+            await self._record_failure_activity(
+                user_id, "manual_required", job=job
+            )
             return AgentOutput(
                 action="application_failed",
                 rationale="No automated submission method available for this job",
@@ -123,6 +129,9 @@ class ApplyAgent(BaseAgent):
         # 5. Prepare materials
         materials = await self._prepare_materials(user_id, job_id)
         if materials is None:
+            await self._record_failure_activity(
+                user_id, "missing_materials", job=job
+            )
             return AgentOutput(
                 action="application_failed",
                 rationale="No tailored resume found for this job",
@@ -383,3 +392,61 @@ class ApplyAgent(BaseAgent):
                 },
             )
             await session.commit()
+
+    async def _record_failure_activity(
+        self,
+        user_id: str,
+        error_reason: str,
+        job: dict[str, Any] | None = None,
+        job_id: str | None = None,
+    ) -> None:
+        """Record an agent activity for a failed application attempt.
+
+        Fire-and-forget — failures in recording must not break the main flow.
+        """
+        try:
+            from uuid import uuid4
+
+            from sqlalchemy import text
+
+            from app.db.engine import AsyncSessionLocal
+
+            import json
+
+            job_title = job.get("title", "Unknown") if job else "Unknown"
+            company = job.get("company", "Unknown") if job else "Unknown"
+            job_url = job.get("url") if job else None
+
+            activity_data = {
+                "error": error_reason,
+                "job_id": job_id or (str(job["id"]) if job and "id" in job else None),
+                "job_title": job_title,
+                "company": company,
+                "job_url": job_url,
+            }
+
+            async with AsyncSessionLocal() as session:
+                await session.execute(
+                    text(
+                        "INSERT INTO agent_activities "
+                        "(id, user_id, event_type, agent_type, title, severity, data) "
+                        "VALUES (:id, "
+                        "(SELECT id FROM users WHERE clerk_id = :uid), "
+                        ":event_type, :agent_type, :title, :severity, :data)"
+                    ),
+                    {
+                        "id": str(uuid4()),
+                        "uid": user_id,
+                        "event_type": "agent.apply.failed",
+                        "agent_type": "apply",
+                        "title": (
+                            f"Application failed for {job_title} at {company}: "
+                            f"{error_reason}"
+                        ),
+                        "severity": "warning",
+                        "data": json.dumps(activity_data),
+                    },
+                )
+                await session.commit()
+        except Exception as exc:
+            logger.debug("Failure activity recording failed (non-critical): %s", exc)
