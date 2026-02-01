@@ -9,6 +9,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import json
+
 import pytest
 
 from app.agents.base import AgentOutput
@@ -494,3 +496,94 @@ class TestCeleryTaskIntegration:
             assert result.action == "job_scout_complete"
             assert result.to_dict()["data"]["matches_created"] == 5
             agent.run.assert_awaited_once_with("user-1", {})
+
+
+# ---------------------------------------------------------------------------
+# Structured rationale in matches tests (6.5)
+# ---------------------------------------------------------------------------
+
+
+class TestStructuredRationaleInMatches:
+    """Tests that execute() stores structured JSON rationale in Match records."""
+
+    def setup_method(self):
+        self.agent = JobScoutAgent()
+
+    @pytest.mark.asyncio
+    async def test_execute_stores_json_rationale(self):
+        """Rationale argument passed to Match() is valid JSON with structured keys."""
+        from app.services.job_sources.base import RawJob
+
+        mock_context = {
+            "preferences": FULL_PREFERENCES,
+            "profile": FULL_PROFILE,
+        }
+
+        raw_jobs = [
+            RawJob(
+                title="Senior Software Engineer",
+                company="Acme Corp",
+                url="https://acme.com/1",
+                location="San Francisco, CA",
+                description="Python and React role",
+                salary_min=150000,
+                salary_max=200000,
+                remote=True,
+                source="jsearch",
+            ),
+        ]
+
+        mock_job = _make_job()
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.flush = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        # Track Match objects added to session
+        added_objects = []
+        mock_session.add = MagicMock(side_effect=lambda obj: added_objects.append(obj))
+
+        mock_execute_result = MagicMock()
+        mock_execute_result.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_execute_result)
+
+        mock_engine_module = MagicMock()
+        mock_engine_module.AsyncSessionLocal = MagicMock(return_value=mock_session)
+
+        import sys
+
+        with patch(
+            "app.agents.orchestrator.get_user_context",
+            new_callable=AsyncMock,
+            return_value=mock_context,
+        ), patch.dict(
+            sys.modules,
+            {"app.db.engine": mock_engine_module},
+        ), patch(
+            "app.services.job_dedup.upsert_jobs",
+            new_callable=AsyncMock,
+            return_value=[mock_job],
+        ), patch.object(
+            self.agent,
+            "_fetch_jobs",
+            new_callable=AsyncMock,
+            return_value=raw_jobs,
+        ), patch(
+            "app.config.settings",
+        ) as mock_settings:
+            mock_settings.LLM_SCORING_ENABLED = False
+            mock_settings.MATCH_SCORE_THRESHOLD = 40
+            result = await self.agent.execute("user-1", {})
+
+        assert isinstance(result, AgentOutput)
+        # Verify at least one Match was added
+        if added_objects:
+            match_obj = added_objects[0]
+            rationale_str = match_obj.rationale
+            # Rationale should be valid JSON
+            parsed = json.loads(rationale_str)
+            assert "summary" in parsed
+            assert "top_reasons" in parsed
+            assert "concerns" in parsed
+            assert "confidence" in parsed

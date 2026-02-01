@@ -51,13 +51,13 @@ so that **I can trust the agent's recommendations**.
   - [x] 5.1: Add `parse_rationale(rationale_str: str) -> dict` utility function in `job_scoring.py` that tries JSON parse, falls back to wrapping plain text
   - [x] 5.2: The wrapper produces `{"top_reasons": ["<original>"], "concerns": [], "confidence": "Medium"}` for non-JSON rationale strings
 
-- [ ] Task 6: Write tests (AC: #8)
-  - [ ] 6.1: Test LLM structured rationale: mock LLM returning top_reasons, concerns, confidence — verify ScoringResult fields
-  - [ ] 6.2: Test heuristic fallback rationale: verify profile-specific reasons generated from breakdown
-  - [ ] 6.3: Test confidence derivation: score 80 → High, score 60 → Medium, score 30 → Low
-  - [ ] 6.4: Test backward compatibility: plain text rationale → wrapped JSON structure
-  - [ ] 6.5: Test rationale JSON serialization for Match storage
-  - [ ] 6.6: Update existing `test_job_scoring.py` tests to account for new ScoringResult fields
+- [x] Task 6: Write tests (AC: #8)
+  - [x] 6.1: Test LLM structured rationale: mock LLM returning top_reasons, concerns, confidence — verify ScoringResult fields
+  - [x] 6.2: Test heuristic fallback rationale: verify profile-specific reasons generated from breakdown
+  - [x] 6.3: Test confidence derivation: score 80 → High, score 60 → Medium, score 30 → Low
+  - [x] 6.4: Test backward compatibility: plain text rationale → wrapped JSON structure
+  - [x] 6.5: Test rationale JSON serialization for Match storage
+  - [x] 6.6: Update existing `test_job_scoring.py` tests to account for new ScoringResult fields
 
 ## Dev Notes
 
