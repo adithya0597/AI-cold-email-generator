@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.clerk import get_current_user_id
-from app.db.models import Job, Match, MatchStatus, User
+from app.db.models import Job, Match, MatchStatus, SwipeEvent, User
 from app.db.session import get_db
 from app.services.job_scoring import parse_rationale
 
@@ -253,5 +253,20 @@ async def update_match_status(
     match.status = MatchStatus(body.status)
     await db.flush()
     await db.refresh(match)
+
+    # Record swipe event with denormalized job attributes
+    swipe_event = SwipeEvent(
+        user_id=user.id,
+        match_id=match.id,
+        action=body.status,
+        job_company=match.job.company,
+        job_location=match.job.location,
+        job_remote=match.job.remote,
+        job_salary_min=match.job.salary_min,
+        job_salary_max=match.job.salary_max,
+        job_employment_type=match.job.employment_type,
+    )
+    db.add(swipe_event)
+    await db.flush()
 
     return _match_to_response(match)
