@@ -291,6 +291,65 @@ def cleanup_expired_approvals() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Zombie task cleanup (default queue)
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    name="app.worker.tasks.cleanup_zombie_tasks",
+    queue="default",
+    max_retries=0,
+)
+def cleanup_zombie_tasks() -> Dict[str, Any]:
+    """Detect and revoke tasks that have been running longer than the hard timeout.
+
+    Uses Celery's inspect API to list active tasks on all workers, then
+    revokes any that started more than ``task_time_limit`` seconds ago
+    (default 300s).  Runs every 5 minutes via beat_schedule.
+
+    Returns dict with ``revoked_count`` and ``details`` list.
+    """
+    hard_timeout = celery_app.conf.task_time_limit or 300
+    inspector = celery_app.control.inspect()
+    active = inspector.active()
+
+    if active is None:
+        logger.warning("cleanup_zombie_tasks: no workers online (inspect returned None)")
+        return {"revoked_count": 0, "details": [], "note": "no workers online"}
+
+    now = datetime.now(timezone.utc).timestamp()
+    revoked = []
+
+    for worker_name, task_list in active.items():
+        for task_info in task_list:
+            # task_info["time_start"] is a Unix timestamp (float)
+            time_start = task_info.get("time_start")
+            if time_start is None:
+                continue
+            elapsed = now - time_start
+            if elapsed > hard_timeout:
+                task_id = task_info["id"]
+                celery_app.control.revoke(task_id, terminate=True)
+                logger.warning(
+                    "Revoked zombie task %s (%s) on %s — running for %.0fs (limit %ds)",
+                    task_id,
+                    task_info.get("name", "unknown"),
+                    worker_name,
+                    elapsed,
+                    hard_timeout,
+                )
+                revoked.append({
+                    "task_id": task_id,
+                    "task_name": task_info.get("name", "unknown"),
+                    "worker": worker_name,
+                    "elapsed_seconds": round(elapsed),
+                })
+
+    logger.info("cleanup_zombie_tasks: revoked %d tasks", len(revoked))
+    return {"revoked_count": len(revoked), "details": revoked}
+
+
+# ---------------------------------------------------------------------------
 # Celery beat schedule (periodic tasks)
 # ---------------------------------------------------------------------------
 
@@ -298,6 +357,10 @@ celery_app.conf.beat_schedule = {
     "cleanup-expired-approvals": {
         "task": "app.worker.tasks.cleanup_expired_approvals",
         "schedule": 6 * 60 * 60,  # Every 6 hours (in seconds)
+    },
+    "cleanup-zombie-tasks": {
+        "task": "app.worker.tasks.cleanup_zombie_tasks",
+        "schedule": 300,  # Every 5 minutes (in seconds)
     },
 }
 
