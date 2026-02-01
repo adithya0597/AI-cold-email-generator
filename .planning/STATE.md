@@ -10,16 +10,16 @@
 Phase: 4 of 9 (Job Discovery)
 Plan: 9 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-5 (Redis Cache and Queue Setup)
+Last activity: 2026-02-01 -- Completed 0-6 (Celery Worker Infrastructure)
 
-Progress: [██████████████████████████████░] ~51%
+Progress: [███████████████████████████████░] ~53%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30
+- Total plans completed: 31
 - Average duration: ~6 min
-- Total execution time: ~181 min
+- Total execution time: ~186 min
 
 **By Phase:**
 
@@ -134,6 +134,9 @@ Progress: [███████████████████████
 - [0-5]: Centralized Redis client in app/cache/redis_client.py with shared ConnectionPool (max_connections=20)
 - [0-5]: Pub/sub channel templates in app/cache/pubsub.py with format_channel() helper for user_id substitution
 - [0-5]: All Redis mocking uses unittest.mock.AsyncMock (no fakeredis dependency)
+- [0-6]: DLQ uses Redis LIST keyed dlq:{queue} with 7-day TTL; task_failure signal bridges sync-to-async via asyncio.run()
+- [0-6]: Zombie cleanup uses celery inspect().active() to find tasks exceeding hard timeout (300s)
+- [0-6]: Exponential backoff: base_delay * 2^attempt capped at max_delay (default 30s base, 600s cap)
 
 ### Pending Todos
 
@@ -150,5 +153,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 0-5 (Redis Cache and Queue Setup). Centralized Redis client, pub/sub utilities, 33 tests covering cache, pubsub, Celery config.
+Stopped at: Completed 0-6 (Celery Worker Infrastructure). DLQ handler, zombie cleanup, exponential backoff retry, 42 tests passing.
 Resume file: None
