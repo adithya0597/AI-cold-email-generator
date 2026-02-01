@@ -117,6 +117,41 @@ async def _get_pending_approval_count(user_id: str) -> int:
         return 0
 
 
+async def _get_pending_approval_cards(user_id: str) -> List[Dict[str, Any]]:
+    """Fetch pending approval items with job details for briefing cards."""
+    try:
+        from sqlalchemy import select
+
+        from app.db.engine import AsyncSessionLocal
+        from app.db.models import ApprovalQueueItem
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(ApprovalQueueItem)
+                .where(
+                    ApprovalQueueItem.user_id == user_id,
+                    ApprovalQueueItem.status == "pending",
+                )
+                .order_by(ApprovalQueueItem.created_at.desc())
+                .limit(10)
+            )
+            rows = result.scalars().all()
+            cards = []
+            for row in rows:
+                payload = row.payload or {}
+                cards.append({
+                    "item_id": str(row.id),
+                    "job_title": payload.get("job_title", "Unknown"),
+                    "company": payload.get("company", "Unknown"),
+                    "submission_method": payload.get("submission_method", "unknown"),
+                    "rationale": row.rationale or "",
+                })
+            return cards
+    except Exception as exc:
+        logger.warning("Failed to fetch approval cards for user=%s: %s", user_id, exc)
+        return []
+
+
 async def _get_agent_warnings(user_id: str) -> List[Dict[str, Any]]:
     """Fetch recent agent warnings/issues (last 24h)."""
     try:
@@ -219,6 +254,7 @@ def _build_no_llm_briefing(raw_data: Dict[str, Any]) -> Dict[str, Any]:
     matches = raw_data.get("recent_matches", [])
     approvals = raw_data.get("pending_approvals", 0)
     updates = raw_data.get("application_updates", [])
+    approval_cards = raw_data.get("pending_approval_cards", [])
 
     return {
         "summary": (
@@ -247,6 +283,7 @@ def _build_no_llm_briefing(raw_data: Dict[str, Any]) -> Dict[str, Any]:
                 [u for u in updates if u.get("agent_type") == "apply"]
             ),
         },
+        "pending_approval_cards": approval_cards,
     }
 
 
@@ -303,6 +340,7 @@ async def generate_full_briefing(user_id: str) -> Dict[str, Any]:
         asyncio.wait_for(_get_application_updates(user_id), timeout=_QUERY_TIMEOUT_SECONDS),
         asyncio.wait_for(_get_pending_approval_count(user_id), timeout=_QUERY_TIMEOUT_SECONDS),
         asyncio.wait_for(_get_agent_warnings(user_id), timeout=_QUERY_TIMEOUT_SECONDS),
+        asyncio.wait_for(_get_pending_approval_cards(user_id), timeout=_QUERY_TIMEOUT_SECONDS),
         return_exceptions=True,
     )
 
@@ -311,6 +349,7 @@ async def generate_full_briefing(user_id: str) -> Dict[str, Any]:
     application_updates = gather_results[1] if not isinstance(gather_results[1], BaseException) else []
     pending_approvals = gather_results[2] if not isinstance(gather_results[2], BaseException) else 0
     agent_warnings = gather_results[3] if not isinstance(gather_results[3], BaseException) else []
+    approval_cards = gather_results[4] if not isinstance(gather_results[4], BaseException) else []
 
     # Check for empty state (new user, no data at all)
     has_any_data = (
@@ -329,6 +368,7 @@ async def generate_full_briefing(user_id: str) -> Dict[str, Any]:
             "application_updates": application_updates,
             "pending_approvals": pending_approvals,
             "agent_warnings": agent_warnings,
+            "pending_approval_cards": approval_cards,
         }
         briefing_content = await _llm_summarise(raw_data)
 
