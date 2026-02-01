@@ -309,3 +309,179 @@ class TestBatchApprove:
             )
 
         assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Helpers for history tests (Story 5-13)
+# ---------------------------------------------------------------------------
+
+
+def _sample_application_row(
+    app_id="app-uuid-1",
+    job_id="job-uuid-1",
+    app_status="applied",
+):
+    """Create a sample application row with job join fields."""
+    return {
+        "id": app_id,
+        "job_id": job_id,
+        "job_title": "Backend Engineer",
+        "company": "BigTech Inc",
+        "status": app_status,
+        "applied_at": datetime(2026, 2, 1, 12, 0, tzinfo=timezone.utc),
+        "resume_version_id": "resume-uuid-1",
+    }
+
+
+def _sample_detail_row(app_id="app-uuid-1", job_id="job-uuid-1"):
+    """Create a sample application detail row with job URL."""
+    return {
+        "id": app_id,
+        "job_id": job_id,
+        "job_title": "Backend Engineer",
+        "company": "BigTech Inc",
+        "job_url": "https://example.com/job/1",
+        "status": "applied",
+        "applied_at": datetime(2026, 2, 1, 12, 0, tzinfo=timezone.utc),
+        "resume_version_id": "resume-uuid-1",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Test: List applications (AC1, AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestListApplications:
+    """Tests for GET /applications/history."""
+
+    @pytest.mark.asyncio
+    async def test_list_returns_applications(self):
+        """Returns applications with job details."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_count = MagicMock()
+        mock_count.scalar.return_value = 1
+
+        mock_items = MagicMock()
+        mock_items.mappings.return_value.all.return_value = [_sample_application_row()]
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_count, mock_items])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import list_applications
+
+            result = await list_applications(
+                user_id="user123", status_filter=None, limit=20, offset=0,
+            )
+
+        assert result.total == 1
+        assert len(result.applications) == 1
+        assert result.applications[0].job_title == "Backend Engineer"
+        assert result.applications[0].company == "BigTech Inc"
+        assert result.applications[0].status == "applied"
+        assert result.has_more is False
+
+    @pytest.mark.asyncio
+    async def test_list_with_status_filter(self):
+        """Filters applications by status when provided."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_count = MagicMock()
+        mock_count.scalar.return_value = 1
+
+        mock_items = MagicMock()
+        mock_items.mappings.return_value.all.return_value = [
+            _sample_application_row(app_status="applied")
+        ]
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_count, mock_items])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import list_applications
+
+            result = await list_applications(
+                user_id="user123", status_filter="applied", limit=20, offset=0,
+            )
+
+        assert result.total == 1
+        # Verify the SQL included the status filter
+        count_call = mock_sess.execute.call_args_list[0]
+        sql_params = count_call[0][1]
+        assert sql_params["status"] == "applied"
+
+    @pytest.mark.asyncio
+    async def test_list_has_more_pagination(self):
+        """Returns has_more=True when more results exist beyond limit+offset."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_count = MagicMock()
+        mock_count.scalar.return_value = 25  # More than default limit
+
+        mock_items = MagicMock()
+        mock_items.mappings.return_value.all.return_value = [_sample_application_row()]
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_count, mock_items])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import list_applications
+
+            result = await list_applications(
+                user_id="user123", status_filter=None, limit=20, offset=0,
+            )
+
+        assert result.has_more is True
+
+
+# ---------------------------------------------------------------------------
+# Test: Application detail (AC2)
+# ---------------------------------------------------------------------------
+
+
+class TestApplicationDetail:
+    """Tests for GET /applications/detail/{id}."""
+
+    @pytest.mark.asyncio
+    async def test_detail_returns_application(self):
+        """Returns application with job and cover letter details."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_app = MagicMock()
+        mock_app.mappings.return_value.first.return_value = _sample_detail_row()
+
+        mock_cl = MagicMock()
+        mock_cl.scalar.return_value = "cl-uuid-1"
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_app, mock_cl])
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import get_application_detail
+
+            result = await get_application_detail(
+                application_id="app-uuid-1", user_id="user123"
+            )
+
+        assert result.id == "app-uuid-1"
+        assert result.job_title == "Backend Engineer"
+        assert result.job_url == "https://example.com/job/1"
+        assert result.cover_letter_document_id == "cl-uuid-1"
+
+    @pytest.mark.asyncio
+    async def test_detail_not_found_returns_404(self):
+        """Returns 404 when application doesn't exist."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_app = MagicMock()
+        mock_app.mappings.return_value.first.return_value = None
+
+        mock_sess.execute = AsyncMock(return_value=mock_app)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.api.v1.applications import get_application_detail
+
+            with pytest.raises(Exception) as exc_info:
+                await get_application_detail(
+                    application_id="nonexistent", user_id="user123"
+                )
+
+        assert exc_info.value.status_code == 404

@@ -81,6 +81,167 @@ class BatchApproveResponse(BaseModel):
     details: List[Dict[str, Any]] = []
 
 
+class ApplicationItem(BaseModel):
+    """A single application record."""
+
+    id: str
+    job_id: str
+    job_title: Optional[str] = None
+    company: Optional[str] = None
+    status: str
+    applied_at: str
+    resume_version_id: Optional[str] = None
+
+
+class ApplicationListResponse(BaseModel):
+    """Response for GET /applications."""
+
+    applications: List[ApplicationItem]
+    total: int
+    has_more: bool
+
+
+class ApplicationDetailResponse(BaseModel):
+    """Response for GET /applications/{id}."""
+
+    id: str
+    job_id: str
+    job_title: Optional[str] = None
+    company: Optional[str] = None
+    job_url: Optional[str] = None
+    status: str
+    applied_at: str
+    resume_version_id: Optional[str] = None
+    cover_letter_document_id: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# History endpoints (must be before /queue to avoid route conflicts)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/history", response_model=ApplicationListResponse)
+async def list_applications(
+    user_id: str = Depends(get_current_user_id),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """List user's applications sorted by date descending."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        # Build query with optional status filter
+        base_where = (
+            "WHERE a.user_id = (SELECT id FROM users WHERE clerk_id = :uid)"
+        )
+        params: dict = {"uid": user_id, "lim": limit, "off": offset}
+
+        if status_filter:
+            base_where += " AND a.status = :status"
+            params["status"] = status_filter
+
+        # Count total
+        count_result = await session.execute(
+            text(f"SELECT COUNT(*) FROM applications a {base_where}"),
+            params,
+        )
+        total = count_result.scalar() or 0
+
+        # Fetch with job join
+        result = await session.execute(
+            text(
+                f"SELECT a.id, a.job_id, j.title AS job_title, j.company, "
+                f"a.status, a.applied_at, a.resume_version_id "
+                f"FROM applications a "
+                f"LEFT JOIN jobs j ON a.job_id = j.id "
+                f"{base_where} "
+                f"ORDER BY a.applied_at DESC "
+                f"LIMIT :lim OFFSET :off"
+            ),
+            params,
+        )
+        rows = result.mappings().all()
+
+    items = [
+        ApplicationItem(
+            id=str(row["id"]),
+            job_id=str(row["job_id"]),
+            job_title=row["job_title"],
+            company=row["company"],
+            status=str(row["status"]).rsplit(".", 1)[-1].lower(),
+            applied_at=row["applied_at"].isoformat() if row["applied_at"] else "",
+            resume_version_id=str(row["resume_version_id"]) if row["resume_version_id"] else None,
+        )
+        for row in rows
+    ]
+
+    return ApplicationListResponse(
+        applications=items,
+        total=total,
+        has_more=(offset + limit) < total,
+    )
+
+
+@router.get("/detail/{application_id}", response_model=ApplicationDetailResponse)
+async def get_application_detail(
+    application_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Get single application with job and material details."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                "SELECT a.id, a.job_id, j.title AS job_title, j.company, j.url AS job_url, "
+                "a.status, a.applied_at, a.resume_version_id "
+                "FROM applications a "
+                "LEFT JOIN jobs j ON a.job_id = j.id "
+                "WHERE a.id = :aid "
+                "AND a.user_id = (SELECT id FROM users WHERE clerk_id = :uid)"
+            ),
+            {"aid": application_id, "uid": user_id},
+        )
+        row = result.mappings().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Application not found",
+            )
+
+        # Also look up the cover letter for this job
+        cl_result = await session.execute(
+            text(
+                "SELECT id FROM documents "
+                "WHERE user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND job_id = :jid "
+                "AND type = 'cover_letter' "
+                "AND deleted_at IS NULL "
+                "ORDER BY version DESC LIMIT 1"
+            ),
+            {"uid": user_id, "jid": str(row["job_id"])},
+        )
+        cl_id = cl_result.scalar()
+
+    return ApplicationDetailResponse(
+        id=str(row["id"]),
+        job_id=str(row["job_id"]),
+        job_title=row["job_title"],
+        company=row["company"],
+        job_url=row["job_url"],
+        status=str(row["status"]).rsplit(".", 1)[-1].lower(),
+        applied_at=row["applied_at"].isoformat() if row["applied_at"] else "",
+        resume_version_id=str(row["resume_version_id"]) if row["resume_version_id"] else None,
+        cover_letter_document_id=str(cl_id) if cl_id else None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
