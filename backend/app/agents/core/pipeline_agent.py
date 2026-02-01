@@ -64,11 +64,11 @@ class PipelineAgent(BaseAgent):
                 data={"error": "application_not_found"},
             )
 
-        # 3. Detect status from email
+        # 3. Detect status from email (enhanced with LLM fallback)
         from app.services.email_parser import EmailStatusDetector
 
         detector = EmailStatusDetector()
-        detection = detector.detect(email_subject, email_body)
+        detection = await detector.detect_enhanced(email_subject, email_body)
 
         # 4. No status detected
         if detection.detected_status is None:
@@ -121,6 +121,7 @@ class PipelineAgent(BaseAgent):
             confidence=detection.confidence,
             evidence_snippet=detection.evidence_snippet,
             email_subject=email_subject,
+            detection_method=detection.detection_method,
         )
 
         return AgentOutput(
@@ -174,6 +175,7 @@ class PipelineAgent(BaseAgent):
         confidence: float,
         evidence_snippet: str,
         email_subject: str,
+        detection_method: str = "email_parse",
     ) -> None:
         """Update application status and insert audit trail record."""
         from sqlalchemy import text
@@ -198,7 +200,7 @@ class PipelineAgent(BaseAgent):
                     "(id, application_id, old_status, new_status, "
                     "detection_method, confidence, evidence_snippet, "
                     "source_email_subject) "
-                    "VALUES (:id, :aid, :old, :new, 'email_parse', "
+                    "VALUES (:id, :aid, :old, :new, :method, "
                     ":conf, :evidence, :subject)"
                 ),
                 {
@@ -206,6 +208,7 @@ class PipelineAgent(BaseAgent):
                     "aid": application_id,
                     "old": old_status,
                     "new": new_status,
+                    "method": detection_method,
                     "conf": confidence,
                     "evidence": evidence_snippet,
                     "subject": email_subject,

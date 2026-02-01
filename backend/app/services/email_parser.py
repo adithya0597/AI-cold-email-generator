@@ -8,9 +8,12 @@ scores and evidence snippets.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +24,7 @@ class StatusDetection:
     confidence: float  # 0.0 - 1.0
     evidence_snippet: str  # The text that triggered the detection
     is_ambiguous: bool  # True if confidence < 0.7
+    detection_method: str = "regex"  # 'regex' or 'llm'
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +134,94 @@ class EmailStatusDetector:
             evidence_snippet="",
             is_ambiguous=True,
         )
+
+    async def detect_with_llm(self, subject: str, body: str) -> StatusDetection:
+        """Use LLM to classify an email's application status.
+
+        Called as fallback when regex detection is ambiguous.
+        """
+        import json
+
+        text = f"Subject: {subject}\n\nBody: {body[:500]}"
+
+        prompt = (
+            "Classify this email into one of these application statuses: "
+            "rejected, interview, offer, applied, screening. "
+            "If the email is not about a job application status, respond with 'none'. "
+            "Respond with JSON only: {\"status\": \"...\", \"confidence\": 0.0-1.0, \"evidence\": \"brief quote\"}\n\n"
+            f"{text}"
+        )
+
+        try:
+            from openai import AsyncOpenAI
+
+            from app.config import settings
+
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            response = await client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=100,
+            )
+            content = response.choices[0].message.content or ""
+            data = json.loads(content)
+
+            status = data.get("status", "none")
+            if status == "none" or status not in (
+                "rejected", "interview", "offer", "applied", "screening"
+            ):
+                return StatusDetection(
+                    detected_status=None,
+                    confidence=0.0,
+                    evidence_snippet="",
+                    is_ambiguous=True,
+                    detection_method="llm",
+                )
+
+            confidence = float(data.get("confidence", 0.5))
+            evidence = data.get("evidence", "")[:200]
+
+            return StatusDetection(
+                detected_status=status,
+                confidence=confidence,
+                evidence_snippet=evidence,
+                is_ambiguous=confidence < CONFIDENCE_THRESHOLD,
+                detection_method="llm",
+            )
+        except Exception as exc:
+            logger.warning("LLM classification failed: %s", exc)
+            return StatusDetection(
+                detected_status=None,
+                confidence=0.0,
+                evidence_snippet="",
+                is_ambiguous=True,
+                detection_method="llm",
+            )
+
+    async def detect_enhanced(self, subject: str, body: str) -> StatusDetection:
+        """Try regex detection first, fall back to LLM if ambiguous."""
+        result = self.detect(subject, body)
+
+        # If regex is confident, use it
+        if not result.is_ambiguous and result.detected_status is not None:
+            return result
+
+        # If regex found nothing or was ambiguous, try LLM
+        llm_result = await self.detect_with_llm(subject, body)
+
+        # If LLM gives a confident result, prefer it
+        if not llm_result.is_ambiguous and llm_result.detected_status is not None:
+            return llm_result
+
+        # If LLM also ambiguous but found something, prefer LLM if higher confidence
+        if llm_result.detected_status is not None and (
+            result.detected_status is None or llm_result.confidence > result.confidence
+        ):
+            return llm_result
+
+        # Fall back to regex result (even if ambiguous)
+        return result
 
     @staticmethod
     def _extract_snippet(text: str, match: re.Match) -> str:

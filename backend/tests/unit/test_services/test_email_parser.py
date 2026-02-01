@@ -1,8 +1,12 @@
-"""Tests for the Email Status Detection service (Story 6-1, Task 2).
+"""Tests for the Email Status Detection service (Stories 6-1, 6-4).
 
 Covers: rejection, interview, offer, applied, screening detection,
-ambiguous emails, empty input, and confidence thresholds.
+ambiguous emails, empty input, confidence thresholds, LLM fallback.
 """
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.email_parser import CONFIDENCE_THRESHOLD, EmailStatusDetector
 
@@ -202,3 +206,135 @@ class TestAmbiguousDetection:
         )
         assert result.detected_status == "screening"
         assert result.confidence >= 0.70
+
+
+# ---------------------------------------------------------------------------
+# Test: detection_method field
+# ---------------------------------------------------------------------------
+
+
+class TestDetectionMethod:
+    """Tests that detection_method is correctly set."""
+
+    def test_regex_detection_method(self):
+        """Regex-based detection sets method to 'regex'."""
+        d = _detector()
+        result = d.detect(
+            subject="Rejection",
+            body="We have decided to move forward with other candidates.",
+        )
+        assert result.detection_method == "regex"
+
+
+# ---------------------------------------------------------------------------
+# Test: LLM fallback (Story 6-4)
+# ---------------------------------------------------------------------------
+
+
+class TestLLMFallback:
+    """Tests for LLM-based classification fallback."""
+
+    @pytest.mark.asyncio
+    async def test_confident_regex_skips_llm(self):
+        """When regex is confident, detect_enhanced does NOT call LLM."""
+        d = _detector()
+        with patch.object(d, "detect_with_llm", new_callable=AsyncMock) as mock_llm:
+            result = await d.detect_enhanced(
+                subject="Offer Letter",
+                body="We are pleased to offer you the position.",
+            )
+        mock_llm.assert_not_called()
+        assert result.detected_status == "offer"
+        assert result.detection_method == "regex"
+
+    @pytest.mark.asyncio
+    async def test_ambiguous_triggers_llm(self):
+        """When regex is ambiguous, detect_enhanced calls LLM."""
+        d = _detector()
+        from app.services.email_parser import StatusDetection
+
+        mock_llm_result = StatusDetection(
+            detected_status="interview",
+            confidence=0.85,
+            evidence_snippet="we'd love to chat",
+            is_ambiguous=False,
+            detection_method="llm",
+        )
+        with patch.object(
+            d, "detect_with_llm", new_callable=AsyncMock, return_value=mock_llm_result
+        ):
+            result = await d.detect_enhanced(
+                subject="Quick question",
+                body="Hey, we'd love to chat about the role when you're free.",
+            )
+        assert result.detected_status == "interview"
+        assert result.detection_method == "llm"
+        assert result.confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_llm_failure_falls_back_to_regex(self):
+        """When LLM fails, detect_enhanced returns regex result."""
+        d = _detector()
+        from app.services.email_parser import StatusDetection
+
+        # LLM returns failure
+        mock_llm_result = StatusDetection(
+            detected_status=None,
+            confidence=0.0,
+            evidence_snippet="",
+            is_ambiguous=True,
+            detection_method="llm",
+        )
+        with patch.object(
+            d, "detect_with_llm", new_callable=AsyncMock, return_value=mock_llm_result
+        ):
+            result = await d.detect_enhanced(
+                subject="Newsletter",
+                body="Check out our blog.",
+            )
+        # Falls back to regex (which also found nothing)
+        assert result.detected_status is None
+        assert result.detection_method == "regex"
+
+    @pytest.mark.asyncio
+    async def test_detect_with_llm_success(self):
+        """detect_with_llm calls OpenAI and parses response."""
+        d = _detector()
+        mock_choice = MagicMock()
+        mock_choice.message.content = '{"status": "rejected", "confidence": 0.9, "evidence": "not selected"}'
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        with (
+            patch("openai.AsyncOpenAI", return_value=mock_client),
+            patch("app.config.settings") as s,
+        ):
+            s.OPENAI_API_KEY = "test-key"
+            result = await d.detect_with_llm(
+                subject="Update",
+                body="We regret that you were not selected.",
+            )
+        assert result.detected_status == "rejected"
+        assert result.confidence == 0.9
+        assert result.detection_method == "llm"
+
+    @pytest.mark.asyncio
+    async def test_detect_with_llm_exception_returns_ambiguous(self):
+        """detect_with_llm returns ambiguous on exception."""
+        d = _detector()
+
+        with (
+            patch("openai.AsyncOpenAI", side_effect=Exception("API error")),
+            patch("app.config.settings") as s,
+        ):
+            s.OPENAI_API_KEY = "test-key"
+            result = await d.detect_with_llm(
+                subject="Update",
+                body="Some text.",
+            )
+        assert result.detected_status is None
+        assert result.is_ambiguous
+        assert result.detection_method == "llm"

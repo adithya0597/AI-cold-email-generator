@@ -65,6 +65,15 @@ class DisconnectResponse(BaseModel):
     disconnected: bool
 
 
+class ScanResultResponse(BaseModel):
+    """Response for POST /email/scan."""
+
+    emails_processed: int
+    statuses_detected: int
+    flagged_for_review: int
+    errors: int
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -267,3 +276,25 @@ async def disconnect_outlook(
         )
 
     return DisconnectResponse(disconnected=True)
+
+
+# ---------------------------------------------------------------------------
+# Email scan endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/email/scan", response_model=ScanResultResponse)
+async def scan_emails(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Scan connected email accounts for application status updates."""
+    from app.services.email_scan_service import scan_user_emails
+
+    result = await scan_user_emails(user_id)
+
+    return ScanResultResponse(
+        emails_processed=result.emails_processed,
+        statuses_detected=result.statuses_detected,
+        flagged_for_review=result.flagged_for_review,
+        errors=result.errors,
+    )

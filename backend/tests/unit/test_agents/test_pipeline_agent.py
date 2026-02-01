@@ -1,8 +1,8 @@
-"""Tests for the Pipeline Agent (Story 6-1).
+"""Tests for the Pipeline Agent (Stories 6-1, 6-4).
 
 Covers: happy path status update, rejection detection, interview detection,
 ambiguous email flagging, missing application, empty email error,
-same-status no-op, and Celery task registration.
+same-status no-op, detection method tracking, and Celery task registration.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -124,11 +124,12 @@ class TestPipelineAgentAmbiguous:
             confidence=0.5,
             evidence_snippet="possible interview mention",
             is_ambiguous=True,
+            detection_method="regex",
         )
 
         with (
             patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm),
-            patch("app.services.email_parser.EmailStatusDetector.detect", return_value=mock_detection),
+            patch("app.services.email_parser.EmailStatusDetector.detect_enhanced", new_callable=AsyncMock, return_value=mock_detection),
         ):
             from app.agents.core.pipeline_agent import PipelineAgent
 
@@ -210,7 +211,14 @@ class TestPipelineAgentErrors:
         mock_app_result.mappings.return_value.first.return_value = _sample_application_row("applied")
         mock_sess.execute = AsyncMock(return_value=mock_app_result)
 
-        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+        from app.services.email_parser import StatusDetection
+
+        no_detection = StatusDetection(None, 0.0, "", True, "regex")
+
+        with (
+            patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.services.email_parser.EmailStatusDetector.detect_enhanced", new_callable=AsyncMock, return_value=no_detection),
+        ):
             from app.agents.core.pipeline_agent import PipelineAgent
 
             agent = PipelineAgent()
@@ -232,7 +240,14 @@ class TestPipelineAgentErrors:
         mock_app_result.mappings.return_value.first.return_value = _sample_application_row("rejected")
         mock_sess.execute = AsyncMock(return_value=mock_app_result)
 
-        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+        from app.services.email_parser import StatusDetection
+
+        rejected_detection = StatusDetection("rejected", 0.95, "move forward with other", False, "regex")
+
+        with (
+            patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.services.email_parser.EmailStatusDetector.detect_enhanced", new_callable=AsyncMock, return_value=rejected_detection),
+        ):
             from app.agents.core.pipeline_agent import PipelineAgent
 
             agent = PipelineAgent()
@@ -249,6 +264,44 @@ class TestPipelineAgentErrors:
 # ---------------------------------------------------------------------------
 # Test: Agent structure (AC1)
 # ---------------------------------------------------------------------------
+
+
+class TestPipelineAgentDetectionMethod:
+    """Tests for detection method tracking (Story 6-4)."""
+
+    @pytest.mark.asyncio
+    async def test_detection_method_passed_to_audit_trail(self):
+        """detection_method is passed to _update_application_status."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        mock_app_result = MagicMock()
+        mock_app_result.mappings.return_value.first.return_value = _sample_application_row("applied")
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_app_result, MagicMock(), MagicMock()])
+        mock_sess.commit = AsyncMock()
+
+        from app.services.email_parser import StatusDetection
+
+        llm_detection = StatusDetection("rejected", 0.92, "not selected", False, "llm")
+
+        with (
+            patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm),
+            patch("app.services.email_parser.EmailStatusDetector.detect_enhanced", new_callable=AsyncMock, return_value=llm_detection),
+        ):
+            from app.agents.core.pipeline_agent import PipelineAgent
+
+            agent = PipelineAgent()
+            result = await agent.execute("user123", {
+                "application_id": "app-uuid-123",
+                "email_subject": "Update",
+                "email_body": "You were not selected.",
+            })
+
+        assert result.action == "pipeline_status_updated"
+        # Verify the INSERT call includes detection_method
+        insert_call = mock_sess.execute.call_args_list[2]
+        params = insert_call[0][1]
+        assert params["method"] == "llm"
 
 
 class TestPipelineAgentStructure:

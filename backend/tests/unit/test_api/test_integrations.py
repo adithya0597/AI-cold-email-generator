@@ -1,7 +1,7 @@
-"""Tests for Integration API endpoints (Story 6-2, Task 2).
+"""Tests for Integration API endpoints (Stories 6-2, 6-4).
 
 Covers: auth URL endpoint, callback endpoint, status endpoint,
-disconnect endpoint, and error handling.
+disconnect endpoint, error handling, and email scan endpoint.
 """
 
 from unittest.mock import AsyncMock, patch
@@ -150,3 +150,80 @@ class TestGmailDisconnect:
                 await disconnect_gmail(user_id="user123")
 
             assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test: Email scan endpoint (Story 6-4)
+# ---------------------------------------------------------------------------
+
+
+class TestEmailScan:
+    """Tests for POST /integrations/email/scan."""
+
+    @pytest.mark.asyncio
+    async def test_scan_returns_summary(self):
+        """Scan endpoint returns result summary."""
+        from app.services.email_scan_service import ScanResult
+
+        mock_result = ScanResult(
+            emails_processed=5,
+            statuses_detected=3,
+            flagged_for_review=1,
+            errors=0,
+        )
+
+        with patch(
+            "app.services.email_scan_service.scan_user_emails",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            from app.api.v1.integrations import scan_emails
+
+            result = await scan_emails(user_id="user123")
+
+        assert result.emails_processed == 5
+        assert result.statuses_detected == 3
+        assert result.flagged_for_review == 1
+        assert result.errors == 0
+
+    @pytest.mark.asyncio
+    async def test_scan_no_connections(self):
+        """Scan with no connections returns zeros."""
+        from app.services.email_scan_service import ScanResult
+
+        mock_result = ScanResult()
+
+        with patch(
+            "app.services.email_scan_service.scan_user_emails",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            from app.api.v1.integrations import scan_emails
+
+            result = await scan_emails(user_id="user123")
+
+        assert result.emails_processed == 0
+        assert result.statuses_detected == 0
+
+    @pytest.mark.asyncio
+    async def test_scan_with_errors(self):
+        """Scan reports errors count."""
+        from app.services.email_scan_service import ScanResult
+
+        mock_result = ScanResult(
+            emails_processed=2,
+            statuses_detected=1,
+            flagged_for_review=0,
+            errors=1,
+        )
+
+        with patch(
+            "app.services.email_scan_service.scan_user_emails",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            from app.api.v1.integrations import scan_emails
+
+            result = await scan_emails(user_id="user123")
+
+        assert result.errors == 1
