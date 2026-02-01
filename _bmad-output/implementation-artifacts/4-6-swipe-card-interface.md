@@ -1,6 +1,6 @@
 # Story 4.6: Swipe Card Interface
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -256,16 +256,50 @@ frontend/src/hooks/useOnboarding.ts                # Onboarding store is stable
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
+
+### Route Taken
+
+MODERATE (score: 6/16)
+
+### GSD Subagents Used
+
+gsd-executor x1
 
 ### Debug Log References
 
+- 2 auto-fixed blocking issues: asyncpg install for backend tests, framer-motion install for frontend tests (both expected for new dependency story)
+
 ### Completion Notes List
 
+- Created matches API with GET (paginated, filtered, joins Job, parses rationale) and PATCH (status transition validation)
+- Pydantic schemas: MatchResponse with nested JobSummary and RationaleResponse
+- SwipeCard component with framer-motion drag gestures, rotation tilt, save/dismiss overlays
+- MatchDetail expanded view with rationale display (top_reasons, concerns, confidence)
+- TanStack Query hooks with optimistic cache updates following briefings.ts pattern
+- Matches page with card stack, keyboard shortcuts (←/→/Space), empty state
+- Route registered at /matches (protected + onboarding-guarded)
+- 15 backend tests (95% coverage on matches.py), 19 frontend tests
+
 ### Change Log
+
+- 2026-01-31: Implementation via MODERATE route with single gsd-executor
 
 ### File List
 
 **Created:**
+- `backend/app/api/v1/matches.py` — GET/PATCH matches API (95% coverage)
+- `backend/tests/unit/test_api/__init__.py` — Test package init
+- `backend/tests/unit/test_api/test_matches.py` — 15 backend API tests
+- `frontend/src/components/matches/SwipeCard.tsx` — Draggable card with gestures
+- `frontend/src/components/matches/MatchDetail.tsx` — Expanded rationale view
+- `frontend/src/services/matches.ts` — TanStack Query hooks + API service
+- `frontend/src/types/matches.ts` — TypeScript interfaces
+- `frontend/src/pages/Matches.tsx` — Matches page with swipe stack
+- `frontend/src/components/matches/__tests__/SwipeCard.test.tsx` — Component tests
+- `frontend/src/components/matches/__tests__/Matches.test.tsx` — Page tests
 
 **Modified:**
+- `backend/app/api/v1/router.py` — Registered matches router
+- `frontend/src/App.tsx` — Added /matches route
+- `frontend/package.json` — Added framer-motion dependency
