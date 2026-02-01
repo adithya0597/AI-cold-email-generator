@@ -1,6 +1,6 @@
 # Story 0.4: API Foundation with Versioning
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

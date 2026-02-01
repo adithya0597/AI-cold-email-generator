@@ -6,9 +6,10 @@ Strategy:
     authenticated).
   - Stores counters in Redis when available; falls back to an in-memory
     dictionary so the app can run without Redis during development.
-  - Two tiers: Free (100 req/hour) and Pro (1000 req/hour).  All
-    requests currently default to Pro limits until user tier lookup is
-    implemented in the database layer.
+  - Five tiers: Free (100/hr), Pro (1000/hr), H1B Pro (1000/hr),
+    Career Insurance (1000/hr), Enterprise (5000/hr).  Tier is read
+    from request.state.user_tier; defaults to Free for unauthenticated
+    requests.
 
 Wire into the FastAPI app via ``app.add_middleware(RateLimitMiddleware)``.
 """
@@ -33,8 +34,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 TIER_LIMITS: Dict[str, int] = {
-    "free": 100,   # requests per hour
-    "pro": 1000,   # requests per hour
+    "free": 100,            # requests per hour
+    "pro": 1000,            # requests per hour
+    "h1b_pro": 1000,        # requests per hour
+    "career_insurance": 1000,  # requests per hour
+    "enterprise": 5000,     # requests per hour
 }
 
 WINDOW_SECONDS = 3600  # 1 hour
@@ -135,12 +139,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return f"ip:{client.host}" if client else "ip:unknown"
 
     def _get_tier(self, request: Request) -> str:
-        """Determine the user's tier.
+        """Determine the user's tier from request state.
 
-        TODO: Once user management is in the DB, look up the tier from
-        the user record.  For now everyone gets Pro limits.
+        Falls back to 'free' for unauthenticated requests.  The tier
+        is expected to be set on ``request.state.user_tier`` by upstream
+        middleware or dependencies once user lookup is wired in.
         """
-        return "pro"
+        tier: Optional[str] = getattr(request.state, "user_tier", None) if hasattr(request, "state") else None
+        if tier and tier in TIER_LIMITS:
+            return tier
+        return "free"
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
