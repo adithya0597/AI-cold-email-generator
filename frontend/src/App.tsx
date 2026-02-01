@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
-import { SignedIn, SignedOut, RedirectToSignIn, UserButton } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers, FiLogIn } from 'react-icons/fi';
 
 import EmergencyBrake from './components/EmergencyBrake';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import ColdEmailGenerator from './components/ColdEmailGenerator';
 import LinkedInPostGenerator from './components/LinkedInPostGenerator';
 import AuthorStylesManager from './components/AuthorStylesManager';
@@ -23,21 +24,6 @@ import BriefingSettingsPage from './pages/BriefingSettings';
 import Matches from './pages/Matches';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
-
-/**
- * ProtectedRoute -- requires Clerk authentication.
- * Renders children if signed in, otherwise redirects to sign-in.
- */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
-  );
-}
 
 function App() {
   const [healthStatus, setHealthStatus] = useState<{ status: string } | null>(null);
@@ -284,67 +270,30 @@ function App() {
             <Route path="/author-styles" element={<AuthorStylesManager />} />
             <Route path="/settings" element={<Settings />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/preferences"
-              element={
-                <ProtectedRoute>
-                  <Preferences />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
+            {/* Protected routes -- ProtectedRoute syncs user record and redirects if unauthenticated */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/preferences" element={<Preferences />} />
+              <Route
+                path="/dashboard"
+                element={
                   <OnboardingGuard>
                     <Dashboard />
                   </OnboardingGuard>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/matches"
-              element={
-                <ProtectedRoute>
+                }
+              />
+              <Route
+                path="/matches"
+                element={
                   <OnboardingGuard>
                     <Matches />
                   </OnboardingGuard>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/briefings"
-              element={
-                <ProtectedRoute>
-                  <BriefingHistory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/briefings/settings"
-              element={
-                <ProtectedRoute>
-                  <BriefingSettingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/briefings/:briefingId"
-              element={
-                <ProtectedRoute>
-                  <BriefingDetail />
-                </ProtectedRoute>
-              }
-            />
+                }
+              />
+              <Route path="/briefings" element={<BriefingHistory />} />
+              <Route path="/briefings/settings" element={<BriefingSettingsPage />} />
+              <Route path="/briefings/:briefingId" element={<BriefingDetail />} />
+            </Route>
           </Routes>
         </main>
 
