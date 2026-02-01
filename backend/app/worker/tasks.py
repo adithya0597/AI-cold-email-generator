@@ -179,6 +179,48 @@ def agent_apply(self, user_id: str, task_data: dict) -> Dict[str, Any]:
         raise self.retry(exc=exc)
 
 
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.agent_pipeline",
+    queue="agents",
+    max_retries=2,
+    default_retry_delay=60,
+)
+def agent_pipeline(self, user_id: str, task_data: dict) -> Dict[str, Any]:
+    """Run the Pipeline agent for a user.
+
+    Analyzes email content to detect application status changes
+    and updates the applications table accordingly.
+    """
+    logger.info("agent_pipeline started for user=%s", user_id)
+
+    async def _execute():
+        from app.agents.core.pipeline_agent import PipelineAgent
+        from app.observability.langfuse_client import create_agent_trace, flush_traces
+
+        trace = create_agent_trace(
+            user_id=user_id,
+            agent_type="pipeline",
+            celery_task_id=self.request.id,
+        )
+        try:
+            agent = PipelineAgent()
+            result = await agent.run(user_id, task_data)
+            trace.update(output=result.to_dict())
+            return result.to_dict()
+        except Exception as exc:
+            trace.update(level="ERROR", status_message=str(exc))
+            raise
+        finally:
+            flush_traces()
+
+    try:
+        return _run_async(_execute())
+    except Exception as exc:
+        logger.exception("agent_pipeline failed for user=%s", user_id)
+        raise self.retry(exc=exc)
+
+
 # ---------------------------------------------------------------------------
 # Briefing tasks (briefings queue)
 # ---------------------------------------------------------------------------

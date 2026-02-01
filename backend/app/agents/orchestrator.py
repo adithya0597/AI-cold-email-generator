@@ -33,6 +33,7 @@ TASK_ROUTING: dict[str, str] = {
     "job_scout": "app.worker.tasks.agent_job_scout",
     "resume": "app.worker.tasks.agent_resume",
     "apply": "app.worker.tasks.agent_apply",
+    "pipeline": "app.worker.tasks.agent_pipeline",
     "briefing": "app.worker.tasks.briefing_generate",
 }
 
