@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 4 of 9 (Job Discovery)
-Plan: 11 of ? in current phase
+Plan: 12 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-9 (Error Tracking Integration)
+Last activity: 2026-02-01 -- Completed 0-10 (WebSocket Infrastructure)
 
-Progress: [█████████████████████████████████░] ~57%
+Progress: [██████████████████████████████████░] ~59%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 33
+- Total plans completed: 34
 - Average duration: ~6 min
-- Total execution time: ~195 min
+- Total execution time: ~199 min
 
 **By Phase:**
 
@@ -142,6 +142,10 @@ Progress: [███████████████████████
 - [0-9]: sentry_sdk.set_user() used instead of deprecated configure_scope() (Sentry SDK v2 API)
 - [0-9]: User context cleared in finally block after each request to prevent cross-request leaking
 - [0-9]: Sentry Vite plugin conditionally added only when SENTRY_AUTH_TOKEN env var exists
+- [0-10]: WebSocket JWT validation skips in dev mode (no CLERK_DOMAIN) -- caller uses URL user_id as fallback
+- [0-10]: Close code 4401 for WS auth rejection (WebSocket spec 4000-4999 range for app-specific codes)
+- [0-10]: REST events endpoint returns oldest-first order for chronological client replay after reconnect
+- [0-10]: Exponential backoff (1s-30s) with 10% jitter replaces fixed 3s reconnect on both WS components
 
 ### Pending Todos
 
@@ -158,5 +162,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 0-9 (Error Tracking Integration). PII scrubbing, custom fingerprinting, frontend ErrorBoundary, 19 tests passing.
+Stopped at: Completed 0-10 (WebSocket Infrastructure). JWT auth on WS endpoint, REST events fallback, exponential backoff reconnect, 14 tests passing.
 Resume file: None
