@@ -32,6 +32,8 @@ DAILY_APPLICATION_LIMITS: dict[str, int] = {
     "enterprise": 100,
 }
 
+INDEED_DAILY_LIMIT = 50
+
 
 # ---------------------------------------------------------------------------
 # ApplyAgent
@@ -234,14 +236,21 @@ class ApplyAgent(BaseAgent):
         """Determine the best submission method for a job.
 
         Returns:
+            'indeed_easy_apply' if job sourced from Indeed with a URL,
             'api' if job has an application URL,
             'email_fallback' if description contains email contact,
             'manual_required' if neither is available.
         """
         import re
 
-        # Check for application URL
+        source = (job.get("source") or "").lower()
         url = job.get("url") or ""
+
+        # Indeed Easy Apply detection
+        if source == "indeed" and url:
+            return "indeed_easy_apply"
+
+        # Check for application URL
         if url:
             return "api"
 
@@ -450,3 +459,43 @@ class ApplyAgent(BaseAgent):
                 await session.commit()
         except Exception as exc:
             logger.debug("Failure activity recording failed (non-critical): %s", exc)
+
+    def _build_indeed_payload(
+        self, profile: dict[str, Any], job: dict[str, Any], materials: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build submission payload for Indeed Easy Apply.
+
+        Extracts required fields from user profile for Indeed's application form.
+        """
+        return {
+            "source": "indeed",
+            "job_url": job.get("url"),
+            "job_id": str(job.get("id", "")),
+            "applicant_name": profile.get("headline", ""),
+            "resume_document_id": materials.get("resume_document_id"),
+            "cover_letter_document_id": materials.get("cover_letter_document_id"),
+        }
+
+    async def _check_indeed_limit(self, user_id: str) -> bool:
+        """Check if user has reached the Indeed-specific daily application limit.
+
+        Returns True if under limit, False if at/over limit.
+        """
+        from sqlalchemy import text
+
+        from app.db.engine import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text(
+                    "SELECT COUNT(*) FROM applications a "
+                    "JOIN jobs j ON a.job_id = j.id "
+                    "WHERE a.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                    "AND a.applied_at >= CURRENT_DATE "
+                    "AND j.source = 'indeed'"
+                ),
+                {"uid": user_id},
+            )
+            count = result.scalar() or 0
+
+        return count < INDEED_DAILY_LIMIT

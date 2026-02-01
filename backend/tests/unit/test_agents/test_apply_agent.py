@@ -673,3 +673,82 @@ class TestApplyAgentFailureActivity:
         assert result.action == "application_failed"
         # Only 3 sessions used: limit check, job load, failure activity
         # NO applications table insert occurred
+
+
+# ---------------------------------------------------------------------------
+# Test: Indeed Easy Apply integration (5-12 AC1, AC2, AC3)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyAgentIndeed:
+    """Tests for Indeed Easy Apply integration."""
+
+    def test_indeed_source_detected(self):
+        """Jobs with source='indeed' get indeed_easy_apply method."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {"source": "indeed", "url": "https://indeed.com/apply/123", "description": ""}
+        assert agent._select_submission_method(job) == "indeed_easy_apply"
+
+    def test_non_indeed_source_gets_api(self):
+        """Jobs with other sources and URL get 'api' method."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        job = {"source": "linkedin", "url": "https://linkedin.com/apply", "description": ""}
+        assert agent._select_submission_method(job) == "api"
+
+    def test_build_indeed_payload(self):
+        """Indeed payload includes required fields."""
+        from app.agents.pro.apply_agent import ApplyAgent
+
+        agent = ApplyAgent()
+        profile = {"headline": "Senior Engineer"}
+        job = {"id": "job-123", "url": "https://indeed.com/apply/123"}
+        materials = {"resume_document_id": "res-uuid", "cover_letter_document_id": "cl-uuid"}
+
+        payload = agent._build_indeed_payload(profile, job, materials)
+
+        assert payload["source"] == "indeed"
+        assert payload["job_url"] == "https://indeed.com/apply/123"
+        assert payload["applicant_name"] == "Senior Engineer"
+        assert payload["resume_document_id"] == "res-uuid"
+
+    @pytest.mark.asyncio
+    async def test_indeed_daily_limit_check(self):
+        """Indeed limit check returns False when at 50 applications."""
+        mock_cm, mock_sess = _mock_session_cm()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 50
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            under_limit = await agent._check_indeed_limit("user123")
+
+        assert under_limit is False
+
+    @pytest.mark.asyncio
+    async def test_indeed_daily_limit_under(self):
+        """Indeed limit check returns True when under 50."""
+        mock_cm, mock_sess = _mock_session_cm()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 10
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            from app.agents.pro.apply_agent import ApplyAgent
+
+            agent = ApplyAgent()
+            under_limit = await agent._check_indeed_limit("user123")
+
+        assert under_limit is True
+
+    def test_indeed_daily_limit_constant(self):
+        """Verify INDEED_DAILY_LIMIT is 50."""
+        from app.agents.pro.apply_agent import INDEED_DAILY_LIMIT
+
+        assert INDEED_DAILY_LIMIT == 50
