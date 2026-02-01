@@ -1,7 +1,8 @@
 /**
- * Pipeline page -- Kanban board view of job applications.
+ * Pipeline page -- Kanban board and list view of job applications.
  *
  * Story 6-5: Displays applications grouped by status in draggable columns.
+ * Story 6-6: Adds list view with sort, filter, search, and bulk actions.
  */
 
 import { useState, useCallback } from 'react';
@@ -9,6 +10,7 @@ import { useApplications, useUpdateApplicationStatus } from '../services/applica
 import type { ApplicationItem } from '../services/applications';
 import KanbanCard from '../components/pipeline/KanbanCard';
 import CardDetailPanel from '../components/pipeline/CardDetailPanel';
+import PipelineListView from '../components/pipeline/PipelineListView';
 
 /** Pipeline column definitions — order matters for display. */
 const COLUMNS = [
@@ -45,6 +47,7 @@ export default function Pipeline() {
   const { data, isLoading, isError } = useApplications();
   const updateStatus = useUpdateApplicationStatus();
   const [selectedApp, setSelectedApp] = useState<ApplicationItem | null>(null);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
   const handleDrop = useCallback(
     (e: React.DragEvent, targetStatus: string) => {
@@ -100,41 +103,71 @@ export default function Pipeline() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Pipeline</h1>
-
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {COLUMNS.map((col) => (
-          <div
-            key={col.key}
-            data-testid={`column-${col.key}`}
-            onDrop={(e) => handleDrop(e, col.key)}
-            onDragOver={handleDragOver}
-            className="flex w-64 flex-shrink-0 flex-col rounded-lg bg-gray-50 p-3"
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
+        <div data-testid="view-toggle" className="inline-flex rounded-md shadow-sm">
+          <button
+            data-testid="toggle-kanban"
+            onClick={() => setViewMode('kanban')}
+            className={`rounded-l-md px-3 py-1.5 text-sm font-medium ${
+              viewMode === 'kanban'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border border-gray-300`}
           >
-            {/* Column header */}
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">{col.label}</h3>
-              <span
-                data-testid={`count-${col.key}`}
-                className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-medium text-gray-600"
-              >
-                {grouped[col.key].length}
-              </span>
-            </div>
-
-            {/* Cards */}
-            <div className="flex flex-col gap-2">
-              {grouped[col.key].map((app) => (
-                <KanbanCard
-                  key={app.id}
-                  application={app}
-                  onClick={setSelectedApp}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+            Board
+          </button>
+          <button
+            data-testid="toggle-list"
+            onClick={() => setViewMode('list')}
+            className={`-ml-px rounded-r-md px-3 py-1.5 text-sm font-medium ${
+              viewMode === 'list'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border border-gray-300`}
+          >
+            List
+          </button>
+        </div>
       </div>
+
+      {viewMode === 'kanban' ? (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {COLUMNS.map((col) => (
+            <div
+              key={col.key}
+              data-testid={`column-${col.key}`}
+              onDrop={(e) => handleDrop(e, col.key)}
+              onDragOver={handleDragOver}
+              className="flex w-64 flex-shrink-0 flex-col rounded-lg bg-gray-50 p-3"
+            >
+              {/* Column header */}
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">{col.label}</h3>
+                <span
+                  data-testid={`count-${col.key}`}
+                  className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-medium text-gray-600"
+                >
+                  {grouped[col.key].length}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div className="flex flex-col gap-2">
+                {grouped[col.key].map((app) => (
+                  <KanbanCard
+                    key={app.id}
+                    application={app}
+                    onClick={setSelectedApp}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <PipelineListView applications={applications} onCardClick={setSelectedApp} />
+      )}
 
       {/* Detail panel */}
       {selectedApp && (
