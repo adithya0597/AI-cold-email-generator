@@ -146,7 +146,6 @@ def agent_resume(self, user_id: str, task_data: dict) -> Dict[str, Any]:
 def agent_apply(self, user_id: str, task_data: dict) -> Dict[str, Any]:
     """Run the Application agent for a user.
 
-    Placeholder -- the ApplyAgent class will be implemented in Phase 8.
     Fewer retries than other agents because application submission is
     not idempotent.
     """

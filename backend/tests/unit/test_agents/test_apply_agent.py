@@ -704,7 +704,7 @@ class TestApplyAgentIndeed:
         from app.agents.pro.apply_agent import ApplyAgent
 
         agent = ApplyAgent()
-        profile = {"headline": "Senior Engineer"}
+        profile = {"full_name": "Jane Doe", "headline": "Senior Engineer"}
         job = {"id": "job-123", "url": "https://indeed.com/apply/123"}
         materials = {"resume_document_id": "res-uuid", "cover_letter_document_id": "cl-uuid"}
 
@@ -712,7 +712,7 @@ class TestApplyAgentIndeed:
 
         assert payload["source"] == "indeed"
         assert payload["job_url"] == "https://indeed.com/apply/123"
-        assert payload["applicant_name"] == "Senior Engineer"
+        assert payload["applicant_name"] == "Jane Doe"
         assert payload["resume_document_id"] == "res-uuid"
 
     @pytest.mark.asyncio

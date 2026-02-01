@@ -11,6 +11,7 @@ CRITICAL: Respects daily application limits per user tier.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -128,6 +129,23 @@ class ApplyAgent(BaseAgent):
                 },
             )
 
+        # 4b. Check Indeed-specific daily limit
+        if method == "indeed_easy_apply":
+            under_limit = await self._check_indeed_limit(user_id)
+            if not under_limit:
+                await self._record_failure_activity(
+                    user_id, "indeed_daily_limit_reached", job=job
+                )
+                return AgentOutput(
+                    action="application_failed",
+                    rationale=f"Indeed daily limit reached ({INDEED_DAILY_LIMIT}/day)",
+                    confidence=1.0,
+                    data={
+                        "error": "indeed_daily_limit_reached",
+                        "daily_limit": INDEED_DAILY_LIMIT,
+                    },
+                )
+
         # 5. Prepare materials
         materials = await self._prepare_materials(user_id, job_id)
         if materials is None:
@@ -155,6 +173,20 @@ class ApplyAgent(BaseAgent):
             logger.debug("Activity recording failed (non-critical): %s", exc)
 
         # 8. Build output
+        output_data: dict[str, Any] = {
+            "application_id": application_id,
+            "job_id": job_id,
+            "submission_method": method,
+            "resume_document_id": materials["resume_document_id"],
+            "cover_letter_document_id": materials.get("cover_letter_document_id"),
+        }
+
+        # Include Indeed-specific payload when applicable
+        if method == "indeed_easy_apply":
+            output_data["indeed_payload"] = self._build_indeed_payload(
+                profile, job, materials
+            )
+
         return AgentOutput(
             action="application_submitted",
             rationale=(
@@ -162,13 +194,7 @@ class ApplyAgent(BaseAgent):
                 f"{job.get('company', 'unknown')} via {method}"
             ),
             confidence=0.9,
-            data={
-                "application_id": application_id,
-                "job_id": job_id,
-                "submission_method": method,
-                "resume_document_id": materials["resume_document_id"],
-                "cover_letter_document_id": materials.get("cover_letter_document_id"),
-            },
+            data=output_data,
         )
 
     # ------------------------------------------------------------------
@@ -224,7 +250,7 @@ class ApplyAgent(BaseAgent):
             result = await session.execute(
                 text(
                     "SELECT id, title, company, description, location, url, "
-                    "salary_min, salary_max, employment_type, remote "
+                    "salary_min, salary_max, employment_type, remote, source "
                     "FROM jobs WHERE id = :jid"
                 ),
                 {"jid": job_id},
@@ -367,8 +393,6 @@ class ApplyAgent(BaseAgent):
 
         from app.db.engine import AsyncSessionLocal
 
-        import json
-
         activity_data = {
             "application_id": application_id,
             "job_title": job.get("title", "Unknown"),
@@ -420,8 +444,6 @@ class ApplyAgent(BaseAgent):
 
             from app.db.engine import AsyncSessionLocal
 
-            import json
-
             job_title = job.get("title", "Unknown") if job else "Unknown"
             company = job.get("company", "Unknown") if job else "Unknown"
             job_url = job.get("url") if job else None
@@ -471,7 +493,7 @@ class ApplyAgent(BaseAgent):
             "source": "indeed",
             "job_url": job.get("url"),
             "job_id": str(job.get("id", "")),
-            "applicant_name": profile.get("headline", ""),
+            "applicant_name": profile.get("full_name") or profile.get("name") or "",
             "resume_document_id": materials.get("resume_document_id"),
             "cover_letter_document_id": materials.get("cover_letter_document_id"),
         }

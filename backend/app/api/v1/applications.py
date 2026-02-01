@@ -133,7 +133,9 @@ async def list_applications(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        # Build query with optional status filter
+        # Build query with optional status filter.
+        # SAFETY: base_where is built ONLY from hardcoded strings and
+        # parameterised placeholders (:status). Never interpolate user input.
         base_where = (
             "WHERE a.user_id = (SELECT id FROM users WHERE clerk_id = :uid)"
         )

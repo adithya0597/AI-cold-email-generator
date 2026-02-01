@@ -375,10 +375,10 @@ class TestCoverLetterAPIEndpoint:
             patch("app.db.engine.AsyncSessionLocal", side_effect=session_calls),
             patch("app.agents.pro.cover_letter_agent.CoverLetterAgent.execute", new_callable=AsyncMock, return_value=mock_output),
         ):
-            from app.api.v1.documents import generate_cover_letter
+            from app.api.v1.documents import CoverLetterRequest, generate_cover_letter
 
             result = await generate_cover_letter(
-                body={"job_id": "job-uuid-123"},
+                body=CoverLetterRequest(job_id="job-uuid-123"),
                 user_id="user123",
             )
 
@@ -388,14 +388,12 @@ class TestCoverLetterAPIEndpoint:
         assert result["content"]["opening"] == "Dear Hiring Manager"
 
     @pytest.mark.asyncio
-    async def test_endpoint_missing_job_id_returns_400(self):
-        """POST /cover-letter without job_id returns 400."""
-        from app.api.v1.documents import generate_cover_letter
+    async def test_endpoint_missing_job_id_returns_422(self):
+        """POST /cover-letter without job_id returns 422 (Pydantic validation)."""
+        from app.api.v1.documents import CoverLetterRequest
 
-        with pytest.raises(Exception) as exc_info:
-            await generate_cover_letter(body={}, user_id="user123")
-
-        assert exc_info.value.status_code == 400
+        with pytest.raises(Exception):
+            CoverLetterRequest()  # type: ignore[call-arg]
 
     @pytest.mark.asyncio
     async def test_endpoint_nonexistent_job_returns_404(self):
@@ -406,11 +404,11 @@ class TestCoverLetterAPIEndpoint:
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
-            from app.api.v1.documents import generate_cover_letter
+            from app.api.v1.documents import CoverLetterRequest, generate_cover_letter
 
             with pytest.raises(Exception) as exc_info:
                 await generate_cover_letter(
-                    body={"job_id": "nonexistent"},
+                    body=CoverLetterRequest(job_id="nonexistent"),
                     user_id="user123",
                 )
 

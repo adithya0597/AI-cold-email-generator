@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel
 
 from app.auth.clerk import get_current_user_id
 
@@ -524,9 +525,15 @@ async def get_ats_analysis(
     }
 
 
+class CoverLetterRequest(BaseModel):
+    """Request body for POST /cover-letter."""
+
+    job_id: str
+
+
 @router.post("/cover-letter")
 async def generate_cover_letter(
-    body: dict,
+    body: CoverLetterRequest,
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -539,12 +546,7 @@ async def generate_cover_letter(
 
     from app.db.engine import AsyncSessionLocal
 
-    job_id = body.get("job_id")
-    if not job_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="job_id is required.",
-        )
+    job_id = body.job_id
 
     # Verify job exists and belongs to user
     async with AsyncSessionLocal() as session:
