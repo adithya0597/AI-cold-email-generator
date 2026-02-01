@@ -106,3 +106,47 @@ class TestRedBeatScheduler:
     def test_redbeat_lock_disabled(self):
         """Single-beat deployment: lock disabled."""
         assert celery_app.conf.redbeat_lock_key is None
+
+
+# ============================================================
+# Timeout Settings (AC#2)
+# ============================================================
+
+
+class TestTimeoutSettings:
+    """AC#2: Soft timeout at 240s, hard timeout at 300s."""
+
+    def test_timeout_soft_limit(self):
+        assert celery_app.conf.task_soft_time_limit == 240
+
+    def test_timeout_hard_limit(self):
+        assert celery_app.conf.task_time_limit == 300
+
+
+# ============================================================
+# Heartbeat / Events (AC#3)
+# ============================================================
+
+
+class TestHeartbeatSettings:
+    """AC#3: Worker events enabled for monitoring."""
+
+    def test_worker_events_enabled(self):
+        assert celery_app.conf.worker_send_task_events is True
+
+    def test_task_sent_event_enabled(self):
+        assert celery_app.conf.task_send_sent_event is True
+
+
+# ============================================================
+# Beat Schedule includes zombie cleanup (AC#6)
+# ============================================================
+
+
+class TestBeatScheduleZombieCleanup:
+    """AC#6: beat_schedule includes zombie task cleanup."""
+
+    def test_beat_schedule_has_zombie_cleanup(self):
+        import app.worker.tasks  # noqa: F401
+
+        assert "cleanup-zombie-tasks" in celery_app.conf.beat_schedule
