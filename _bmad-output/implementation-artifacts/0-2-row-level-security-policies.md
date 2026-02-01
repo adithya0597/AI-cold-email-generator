@@ -1,6 +1,6 @@
 # Story 0.2: Row-Level Security Policies
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
