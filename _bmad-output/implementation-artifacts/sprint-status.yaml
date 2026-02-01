@@ -123,7 +123,7 @@ development_status:
   # ═══════════════════════════════════════════
   # Epic 5: Application Automation (14 stories)
   # ═══════════════════════════════════════════
-  epic-5: in-progress
+  epic-5: done
   5-1-resume-agent-implementation: done
   5-2-master-resume-management: done
   5-3-resume-diff-view: done
@@ -137,7 +137,7 @@ development_status:
   5-11-application-failure-handling: done
   5-12-indeed-easy-apply-integration: done
   5-13-application-history-and-materials: done
-  5-14-application-empty-state: backlog
+  5-14-application-empty-state: done
   epic-5-retrospective: optional
 
   # ═══════════════════════════════════════════

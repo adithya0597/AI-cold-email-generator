@@ -25,6 +25,7 @@ import BriefingHistory from './pages/BriefingHistory';
 import BriefingDetail from './components/briefing/BriefingDetail';
 import BriefingSettingsPage from './pages/BriefingSettings';
 import Matches from './pages/Matches';
+import Applications from './pages/Applications';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 
@@ -294,6 +295,14 @@ function App() {
                 element={
                   <OnboardingGuard>
                     <Matches />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/applications"
+                element={
+                  <OnboardingGuard>
+                    <Applications />
                   </OnboardingGuard>
                 }
               />
