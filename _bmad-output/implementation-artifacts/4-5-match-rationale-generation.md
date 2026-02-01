@@ -1,6 +1,6 @@
 # Story 4.5: Match Rationale Generation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -269,9 +269,25 @@ gsd-executor x3 (Wave 1: 2 parallel executors for Tasks 1-3,5 + Task 4; Wave 2: 
 - Updated job_scout.py execute() to serialize structured JSON rationale for Match storage
 - 53 tests passing (17 new + 36 existing), job_scoring.py 92%, job_scout.py 80%
 
+### Code Review Results
+
+**Reviewer:** Claude Opus 4.5 (adversarial code review)
+**Findings:** 7 issues (1 HIGH, 3 MEDIUM, 3 LOW)
+
+| # | Severity | File | Issue | Resolution |
+|---|----------|------|-------|------------|
+| 1 | HIGH | job_scout.py:24-33 | Duplicate `_derive_confidence_from_score()` — copy-paste of `_derive_confidence()` | **Fixed:** Replaced with delegation to canonical `_derive_confidence()` from job_scoring |
+| 2 | MEDIUM | job_scout.py:148-162 | Heuristic path doesn't use `build_heuristic_rationale()`; manual wrapping | **Fixed:** Replaced with `parse_rationale()` for robust JSON detection and wrapping |
+| 3 | MEDIUM | job_scout.py:151 | Fragile JSON detection via `startswith("{")` | **Fixed:** Replaced with `parse_rationale()` which uses proper JSON parsing |
+| 4 | MEDIUM | job_scoring.py:203-209 | Fallback ScoringResult uses default "Medium" confidence instead of deriving from score | **Fixed:** Added `confidence=_derive_confidence(heuristic_score)` to fallback |
+| 5 | LOW | job_scoring.py:292-295 | `build_heuristic_rationale` title reason awkward with empty target | Acknowledged — edge case, no user impact |
+| 6 | LOW | test_job_scoring.py:371 | Weak assertion on heuristic rationale (only `len >= 1`) | Acknowledged — sufficient for current coverage |
+| 7 | LOW | job_scoring.py:372 | `parse_rationale` doesn't validate returned JSON structure | Acknowledged — defensive enough for internal use |
+
 ### Change Log
 
 - 2026-01-31: Implementation via MODERATE route with wave-based parallel GSD executors
+- 2026-01-31: Adversarial code review — 4 issues fixed (1 HIGH, 3 MEDIUM), 3 LOW acknowledged
 
 ### File List
 

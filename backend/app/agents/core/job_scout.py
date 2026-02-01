@@ -24,13 +24,11 @@ logger = logging.getLogger(__name__)
 def _derive_confidence_from_score(score: int) -> str:
     """Derive confidence level from a numeric match score.
 
-    High: score >= 75, Medium: 50-74, Low: < 50.
+    Delegates to the canonical implementation in job_scoring.
     """
-    if score >= 75:
-        return "High"
-    elif score >= 50:
-        return "Medium"
-    return "Low"
+    from app.services.job_scoring import _derive_confidence
+
+    return _derive_confidence(score)
 
 
 class JobScoutAgent(BaseAgent):
@@ -146,19 +144,15 @@ class JobScoutAgent(BaseAgent):
                 ))
 
             # 6b. Ensure all rationales are structured JSON
+            from app.services.job_scoring import parse_rationale
+
             structured_jobs = []
             for job, score, rationale in scored_jobs:
-                if not rationale.startswith("{"):
-                    # Heuristic plain text -- wrap in structured format
-                    rationale_data = {
-                        "summary": rationale,
-                        "top_reasons": [rationale],
-                        "concerns": [],
-                        "confidence": _derive_confidence_from_score(score),
-                    }
-                    structured_jobs.append((job, score, json.dumps(rationale_data)))
-                else:
-                    structured_jobs.append((job, score, rationale))
+                parsed = parse_rationale(rationale)
+                # Ensure confidence is derived from score if missing
+                if parsed.get("confidence") == "Medium" and score != 0:
+                    parsed["confidence"] = _derive_confidence_from_score(score)
+                structured_jobs.append((job, score, json.dumps(parsed)))
             scored_jobs = structured_jobs
 
             # 6c. Apply final threshold filter

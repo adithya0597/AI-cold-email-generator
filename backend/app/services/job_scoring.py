@@ -206,6 +206,7 @@ async def score_job_with_llm(
         breakdown={},
         model_used="heuristic",
         used_llm=False,
+        confidence=_derive_confidence(heuristic_score),
     )
 
     try:
