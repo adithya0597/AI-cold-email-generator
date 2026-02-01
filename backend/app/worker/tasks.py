@@ -417,6 +417,73 @@ def example_task(self, user_id: str, task_data: dict) -> Dict[str, Any]:
 
 
 @celery_app.task(
+    name="app.worker.tasks.gdpr_permanent_delete",
+    ignore_result=False,
+)
+def gdpr_permanent_delete(clerk_user_id: str) -> Dict[str, Any]:
+    """Permanently delete all user data after the 30-day grace period.
+
+    Checks whether the user cancelled deletion (cleared ``deleted_at``)
+    before proceeding.  If ``deleted_at`` is still set, hard-deletes the
+    user row — ``ON DELETE CASCADE`` removes all related data.
+
+    Also cleans up files in Supabase Storage.
+    """
+    logger.info("GDPR permanent delete starting for user %s", clerk_user_id)
+
+    def _run_async(coro):  # noqa: ANN001
+        return asyncio.run(coro)
+
+    async def _execute() -> Dict[str, Any]:
+        from sqlalchemy import text
+
+        from app.db.engine import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            # Check if deletion was cancelled
+            result = await session.execute(
+                text("SELECT deleted_at FROM users WHERE clerk_id = :uid"),
+                {"uid": clerk_user_id},
+            )
+            row = result.first()
+
+            if row is None:
+                logger.info(
+                    "User %s not found — may already be deleted", clerk_user_id
+                )
+                return {"status": "skipped", "reason": "user_not_found"}
+
+            if row[0] is None:
+                logger.info(
+                    "User %s cancelled deletion (deleted_at cleared)", clerk_user_id
+                )
+                return {"status": "skipped", "reason": "deletion_cancelled"}
+
+            # Clean up storage files
+            try:
+                from app.services.storage_service import delete_file
+
+                # Delete known file patterns for this user
+                await delete_file(f"{clerk_user_id}/", bucket="resumes")
+            except Exception as exc:
+                logger.warning(
+                    "Storage cleanup failed for user %s: %s", clerk_user_id, exc
+                )
+
+            # Hard delete — CASCADE removes all related rows
+            await session.execute(
+                text("DELETE FROM users WHERE clerk_id = :uid"),
+                {"uid": clerk_user_id},
+            )
+            await session.commit()
+            logger.info("User %s permanently deleted", clerk_user_id)
+
+            return {"status": "deleted", "user_id": clerk_user_id}
+
+    return _run_async(_execute())
+
+
+@celery_app.task(
     name="app.worker.tasks.health_check_task",
     ignore_result=False,
 )

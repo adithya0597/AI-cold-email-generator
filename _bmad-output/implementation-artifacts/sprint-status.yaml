@@ -43,7 +43,7 @@ development_status:
   # ═══════════════════════════════════════════
   # Epic 0: Platform Foundation (15 stories)
   # ═══════════════════════════════════════════
-  epic-0: in-progress
+  epic-0: done
   0-1-database-schema-foundation: done
   0-2-row-level-security-policies: done
   0-3-clerk-authentication-integration: done
@@ -58,7 +58,7 @@ development_status:
   0-12-ci-cd-pipeline-with-automated-tests: done
   0-13-supabase-storage-configuration: done
   0-14-performance-baseline-establishment: done
-  0-15-gdpr-data-portability-endpoints: backlog
+  0-15-gdpr-data-portability-endpoints: done
   epic-0-retrospective: optional
 
   # ═══════════════════════════════════════════

@@ -215,6 +215,28 @@ async def delete_user_account(
     except Exception as exc:
         logger.warning("DB unavailable for deletion marking: %s", exc)
 
+    # Send deletion confirmation email
+    try:
+        from app.services.transactional_email import send_account_deletion_notice
+
+        await send_account_deletion_notice(to=user_id, user_name=user_id)
+    except Exception as exc:
+        logger.warning("Could not send deletion email to %s: %s", user_id, exc)
+
+    # Schedule permanent deletion after 30-day grace period
+    try:
+        from datetime import timedelta
+
+        from app.worker.tasks import gdpr_permanent_delete
+
+        gdpr_permanent_delete.apply_async(
+            args=[user_id],
+            eta=deletion_scheduled_at + timedelta(days=30),
+        )
+        logger.info("Scheduled permanent deletion for user %s", user_id)
+    except Exception as exc:
+        logger.warning("Could not schedule permanent deletion task: %s", exc)
+
     return JSONResponse(
         status_code=200,
         content={
@@ -222,9 +244,59 @@ async def delete_user_account(
             "user_id": user_id,
             "deletion_scheduled_at": deletion_scheduled_at.isoformat(),
             "grace_period_days": 30,
+            "cancellation_window_days": 14,
             "note": (
-                "Sign in within 30 days to cancel deletion. "
-                "After the grace period all data will be permanently removed."
+                "Sign in within 14 days to cancel deletion. "
+                "After 30 days all data will be permanently removed."
             ),
         },
     )
+
+
+@router.post("/me/cancel-deletion")
+async def cancel_deletion(
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Cancel a pending account deletion (GDPR -- within grace period).
+
+    Clears the ``deleted_at`` timestamp, which causes the scheduled
+    permanent-deletion Celery task to skip execution.
+    """
+    logger.info("Deletion cancellation requested by user %s", user_id)
+
+    try:
+        from sqlalchemy import text
+
+        from app.db.engine import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text(
+                    "UPDATE users SET deleted_at = NULL "
+                    "WHERE clerk_id = :uid AND deleted_at IS NOT NULL "
+                    "RETURNING clerk_id"
+                ),
+                {"uid": user_id},
+            )
+            updated = result.scalar_one_or_none()
+            await session.commit()
+
+            if updated:
+                logger.info("Deletion cancelled for user %s", user_id)
+                return {"message": "Account deletion cancelled", "user_id": user_id}
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "message": "No pending deletion found for this account",
+                        "user_id": user_id,
+                    },
+                )
+
+    except Exception as exc:
+        logger.error("Cancellation failed for user %s: %s", user_id, exc)
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to cancel deletion"},
+        )
