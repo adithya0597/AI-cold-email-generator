@@ -11,6 +11,7 @@ Architecture: Extends BaseAgent (ADR-1 custom orchestrator).
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 from uuid import uuid4
@@ -18,6 +19,18 @@ from uuid import uuid4
 from app.agents.base import AgentOutput, BaseAgent
 
 logger = logging.getLogger(__name__)
+
+
+def _derive_confidence_from_score(score: int) -> str:
+    """Derive confidence level from a numeric match score.
+
+    High: score >= 75, Medium: 50-74, Low: < 50.
+    """
+    if score >= 75:
+        return "High"
+    elif score >= 50:
+        return "Medium"
+    return "Low"
 
 
 class JobScoutAgent(BaseAgent):
@@ -112,7 +125,13 @@ class JobScoutAgent(BaseAgent):
                                 heuristic_score=h_score,
                             )
                             if result.used_llm:
-                                return (job, result.score, result.rationale)
+                                rationale_data = {
+                                    "summary": result.rationale,
+                                    "top_reasons": result.top_reasons or [result.rationale],
+                                    "concerns": result.concerns or [],
+                                    "confidence": result.confidence or _derive_confidence_from_score(result.score),
+                                }
+                                return (job, result.score, json.dumps(rationale_data))
                             return (job, h_score, h_rationale)
                         except Exception as exc:
                             logger.warning(
@@ -126,7 +145,23 @@ class JobScoutAgent(BaseAgent):
                     *(_refine(j, s, r) for j, s, r in scored_jobs)
                 ))
 
-            # 6b. Apply final threshold filter
+            # 6b. Ensure all rationales are structured JSON
+            structured_jobs = []
+            for job, score, rationale in scored_jobs:
+                if not rationale.startswith("{"):
+                    # Heuristic plain text -- wrap in structured format
+                    rationale_data = {
+                        "summary": rationale,
+                        "top_reasons": [rationale],
+                        "concerns": [],
+                        "confidence": _derive_confidence_from_score(score),
+                    }
+                    structured_jobs.append((job, score, json.dumps(rationale_data)))
+                else:
+                    structured_jobs.append((job, score, rationale))
+            scored_jobs = structured_jobs
+
+            # 6c. Apply final threshold filter
             scored_jobs = [
                 (job, score, rationale)
                 for job, score, rationale in scored_jobs

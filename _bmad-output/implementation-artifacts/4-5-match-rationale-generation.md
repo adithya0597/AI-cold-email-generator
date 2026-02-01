@@ -43,9 +43,9 @@ so that **I can trust the agent's recommendations**.
   - [x] 3.3: Generate concern strings from low-scoring dimensions
   - [x] 3.4: Derive confidence from heuristic score
 
-- [ ] Task 4: Update Match creation with structured rationale (AC: #1, #6)
-  - [ ] 4.1: Update `_create_matches()` in `job_scout.py` to store structured JSON rationale string (via `json.dumps()`) in the `rationale` column
-  - [ ] 4.2: Add `_format_rationale_json(scoring_result: ScoringResult) -> str` helper that serializes the structured rationale
+- [x] Task 4: Update Match creation with structured rationale (AC: #1, #6)
+  - [x] 4.1: Update `_create_matches()` in `job_scout.py` to store structured JSON rationale string (via `json.dumps()`) in the `rationale` column
+  - [x] 4.2: Add `_format_rationale_json(scoring_result: ScoringResult) -> str` helper that serializes the structured rationale
 
 - [x] Task 5: Add backward compatibility wrapper (AC: #7)
   - [x] 5.1: Add `parse_rationale(rationale_str: str) -> dict` utility function in `job_scoring.py` that tries JSON parse, falls back to wrapping plain text
