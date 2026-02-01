@@ -26,6 +26,11 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
+# Virus scanning: Supabase Storage does not expose a scanning API.
+# Enable virus scanning via the Supabase dashboard:
+#   Storage → Settings → Enable virus scanning on upload.
+# Files flagged as infected will be quarantined automatically.
+
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 ACCEPTED_CONTENT_TYPES = {
     "application/pdf": ".pdf",
