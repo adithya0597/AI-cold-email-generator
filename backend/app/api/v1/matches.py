@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -193,6 +193,28 @@ async def get_matches(
             )
         ),
     )
+
+
+@router.get("/top-pick", response_model=MatchResponse, responses={204: {"description": "No new matches"}})
+async def get_top_pick(
+    user: User = Depends(ensure_user_exists),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the single highest-scoring 'new' match for the current user."""
+    q = (
+        select(Match)
+        .options(selectinload(Match.job))
+        .where(Match.user_id == user.id, Match.status == MatchStatus.NEW)
+        .order_by(Match.score.desc())
+        .limit(1)
+    )
+    result = await db.execute(q)
+    match = result.scalar_one_or_none()
+
+    if not match:
+        return Response(status_code=204)
+
+    return _match_to_response(match)
 
 
 @router.patch("/{match_id}")
