@@ -10,16 +10,16 @@
 Phase: 4 of 9 (Job Discovery)
 Plan: 9 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-3 (Clerk Authentication Integration)
+Last activity: 2026-02-01 -- Completed 0-5 (Redis Cache and Queue Setup)
 
-Progress: [██████████████████████████████░] ~50%
+Progress: [██████████████████████████████░] ~51%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: ~6 min
-- Total execution time: ~176 min
+- Total execution time: ~181 min
 
 **By Phase:**
 
@@ -131,6 +131,9 @@ Progress: [███████████████████████
 - [0-3]: ProtectedRoute uses Outlet pattern (layout route) instead of wrapper-children for cleaner nesting
 - [0-3]: User sync is fire-and-forget on mount -- non-blocking, failure logged but does not prevent route rendering
 - [0-3]: Placeholder email uses {clerk_id}@pending.sync format (Clerk manages real email)
+- [0-5]: Centralized Redis client in app/cache/redis_client.py with shared ConnectionPool (max_connections=20)
+- [0-5]: Pub/sub channel templates in app/cache/pubsub.py with format_channel() helper for user_id substitution
+- [0-5]: All Redis mocking uses unittest.mock.AsyncMock (no fakeredis dependency)
 
 ### Pending Todos
 
@@ -147,5 +150,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 0-3 (Clerk Authentication Integration). User sync endpoint, ProtectedRoute with auto-sync, new user onboarding redirect, 10 tests.
+Stopped at: Completed 0-5 (Redis Cache and Queue Setup). Centralized Redis client, pub/sub utilities, 33 tests covering cache, pubsub, Celery config.
 Resume file: None
