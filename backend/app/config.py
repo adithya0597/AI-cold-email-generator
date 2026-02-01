@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     MATCH_SCORE_THRESHOLD: int = 40
     LLM_SCORING_ENABLED: bool = True
 
+    # --- Google OAuth (Gmail integration) ---
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/settings/integrations/gmail/callback"
+
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:3000"
 
