@@ -19,6 +19,7 @@ import type { MatchData, MatchListResponse } from '../types/matches';
 export const matchKeys = {
   all: ['matches'] as const,
   list: (status: string) => ['matches', 'list', status] as const,
+  topPick: () => ['matches', 'top-pick'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,14 @@ async function updateMatchStatus(
   return data;
 }
 
+async function fetchTopPick(api: AxiosInstance): Promise<MatchData | null> {
+  const response = await api.get('/api/v1/matches/top-pick', {
+    validateStatus: (s: number) => s === 200 || s === 204,
+  });
+  if (response.status === 204) return null;
+  return response.data as MatchData;
+}
+
 // ---------------------------------------------------------------------------
 // Hooks
 // ---------------------------------------------------------------------------
@@ -55,6 +64,14 @@ export function useMatches(status: string = 'new', page: number = 1, perPage: nu
   return useQuery({
     queryKey: matchKeys.list(status),
     queryFn: () => fetchMatches(api, status, page, perPage),
+  });
+}
+
+export function useTopPick() {
+  const api = useApiClient();
+  return useQuery({
+    queryKey: matchKeys.topPick(),
+    queryFn: () => fetchTopPick(api),
   });
 }
 
