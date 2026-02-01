@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover
     CeleryInstrumentor = None  # type: ignore[assignment,misc]
 
 from app.config import settings
+from app.observability.error_tracking import _before_send
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -78,6 +79,7 @@ def _init_sentry() -> None:
         traces_sample_rate=0.1 if settings.APP_ENV == "production" else 1.0,
         environment=settings.APP_ENV,
         send_default_pii=False,
+        before_send=_before_send,
         integrations=[
             StarletteIntegration(transaction_style="endpoint"),
             FastApiIntegration(transaction_style="endpoint"),

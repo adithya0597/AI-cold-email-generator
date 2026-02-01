@@ -7,6 +7,7 @@ Usage in app factory::
     setup_observability(app)
 """
 
+from app.observability.error_tracking import capture_error
 from app.observability.tracing import create_agent_span, setup_observability
 
-__all__ = ["create_agent_span", "setup_observability"]
+__all__ = ["capture_error", "create_agent_span", "setup_observability"]

@@ -21,6 +21,7 @@ from app.config import settings
 from app.api.v1.router import api_router
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.tracing import setup_observability
+from app.observability.error_tracking import configure_sentry_scope
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +61,10 @@ def create_app() -> FastAPI:
 
     # ---- Observability (OTel tracing + Sentry) -------------------------
     setup_observability(application)
+
+    # ---- Sentry user-context middleware --------------------------------
+    # Runs AFTER Clerk auth so request.state.user_id is available.
+    application.middleware("http")(configure_sentry_scope)
 
     # ---- Global exception handlers -------------------------------------
     _register_exception_handlers(application)
