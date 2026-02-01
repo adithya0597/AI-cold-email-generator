@@ -8,18 +8,18 @@
 ## Current Position
 
 Phase: 4 of 9 (Job Discovery)
-Plan: 9 of ? in current phase
+Plan: 10 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-6 (Celery Worker Infrastructure)
+Last activity: 2026-02-01 -- Completed 0-7 (OpenTelemetry Tracing Setup)
 
-Progress: [███████████████████████████████░] ~53%
+Progress: [████████████████████████████████░] ~55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: ~6 min
-- Total execution time: ~186 min
+- Total execution time: ~191 min
 
 **By Phase:**
 
@@ -137,6 +137,8 @@ Progress: [███████████████████████
 - [0-6]: DLQ uses Redis LIST keyed dlq:{queue} with 7-day TTL; task_failure signal bridges sync-to-async via asyncio.run()
 - [0-6]: Zombie cleanup uses celery inspect().active() to find tasks exceeding hard timeout (300s)
 - [0-6]: Exponential backoff: base_delay * 2^attempt capped at max_delay (default 30s base, 600s cap)
+- [0-7]: OTLP exporter selected by OTEL_EXPORTER_ENDPOINT setting, not APP_ENV -- more flexible for any environment
+- [0-7]: CeleryInstrumentor import made conditional (try/except) since package not always installed locally
 
 ### Pending Todos
 
@@ -153,5 +155,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 0-6 (Celery Worker Infrastructure). DLQ handler, zombie cleanup, exponential backoff retry, 42 tests passing.
+Stopped at: Completed 0-7 (OpenTelemetry Tracing Setup). OTLP exporter, create_agent_span helper, 14 tests passing.
 Resume file: None
