@@ -29,6 +29,9 @@ class ScoringResult:
     breakdown: dict[str, int]  # Per-dimension scores
     model_used: str  # e.g. "gpt-3.5-turbo"
     used_llm: bool  # True if LLM was used, False if heuristic fallback
+    top_reasons: list[str] = field(default_factory=list)  # Top 3 profile-specific match reasons
+    concerns: list[str] = field(default_factory=list)  # Potential gaps/mismatches
+    confidence: str = "Medium"  # "High", "Medium", or "Low"
 
 
 SCORING_PROMPT = """Score this job match (0-100) for a candidate.
@@ -57,7 +60,19 @@ Score breakdown (each 0-100):
 - seniority_match: seniority level alignment
 
 Respond with JSON only:
-{{"score": <0-100>, "rationale": "<1-2 sentences>", "breakdown": {{"title_match": <n>, "skills_overlap": <n>, "location_match": <n>, "salary_match": <n>, "company_size": <n>, "seniority_match": <n>}}}}"""
+{{"score": <0-100>, "rationale": "<1-2 sentences>", "top_reasons": ["<reason referencing candidate profile>", "<reason>", "<reason>"], "concerns": ["<gap or mismatch if any>"], "confidence": "<High|Medium|Low>", "breakdown": {{"title_match": <n>, "skills_overlap": <n>, "location_match": <n>, "salary_match": <n>, "company_size": <n>, "seniority_match": <n>}}}}"""
+
+
+def _derive_confidence(score: int) -> str:
+    """Derive confidence level from a numeric score.
+
+    Returns "High" for score >= 75, "Medium" for 50-74, "Low" for < 50.
+    """
+    if score >= 75:
+        return "High"
+    elif score >= 50:
+        return "Medium"
+    return "Low"
 
 
 def _build_prompt(job: Any, preferences: dict, profile: dict) -> str:
@@ -122,12 +137,34 @@ def _parse_llm_response(data: dict[str, Any]) -> ScoringResult | None:
             else:
                 breakdown[key] = 50  # neutral default
 
+        # Extract new structured rationale fields with defensive defaults
+        raw_top_reasons = data.get("top_reasons")
+        if isinstance(raw_top_reasons, list) and len(raw_top_reasons) > 0:
+            top_reasons = [str(r) for r in raw_top_reasons]
+        else:
+            top_reasons = [rationale]
+
+        raw_concerns = data.get("concerns")
+        if isinstance(raw_concerns, list):
+            concerns = [str(c) for c in raw_concerns]
+        else:
+            concerns = []
+
+        raw_confidence = data.get("confidence")
+        if isinstance(raw_confidence, str) and raw_confidence in ("High", "Medium", "Low"):
+            confidence = raw_confidence
+        else:
+            confidence = _derive_confidence(score)
+
         return ScoringResult(
             score=score,
             rationale=rationale,
             breakdown=breakdown,
             model_used="",  # filled by caller
             used_llm=True,
+            top_reasons=top_reasons,
+            concerns=concerns,
+            confidence=confidence,
         )
     except (ValueError, TypeError, KeyError) as exc:
         logger.warning("Failed to parse LLM scoring response: %s", exc)
@@ -207,3 +244,145 @@ async def score_job_with_llm(
     except Exception as exc:
         logger.warning("LLM scoring failed, using heuristic fallback: %s", exc)
         return fallback
+
+
+def build_heuristic_rationale(
+    score: int,
+    breakdown: dict[str, tuple[int, int]],
+    job: Any,
+    preferences: dict,
+    profile: dict,
+) -> dict:
+    """Generate structured rationale from heuristic breakdown dimensions.
+
+    No LLM call is made -- rationale is derived purely from the scoring
+    breakdown data, job info, and user preferences/profile.
+
+    Parameters
+    ----------
+    score:
+        Final heuristic score (0-100).
+    breakdown:
+        Dict mapping dimension name to ``(score, max)`` tuples,
+        e.g. ``{"title": (20, 25), "location": (10, 20), ...}``.
+    job:
+        Job object with title, location, etc.
+    preferences:
+        User preferences dict.
+    profile:
+        User profile dict.
+    """
+    top_reasons: list[str] = []
+    concerns: list[str] = []
+
+    # Reason/concern generators keyed by dimension name
+    _reason_map: dict[str, str] = {}
+    _concern_map: dict[str, str] = {}
+
+    target_titles = preferences.get("target_titles") or []
+    target_locations = preferences.get("target_locations") or []
+    salary_target = preferences.get("salary_target")
+    skills = profile.get("skills") or []
+
+    job_title = getattr(job, "title", "") or ""
+    job_location = getattr(job, "location", "") or ""
+
+    # Build reason strings for high-scoring dimensions
+    _reason_map["title"] = (
+        f"Title '{job_title}' matches your target role '{target_titles[0]}'"
+        if target_titles
+        else f"Title '{job_title}' aligns with your profile"
+    )
+    is_remote = "remote" in job_location.lower() if job_location else False
+    _reason_map["location"] = (
+        "Remote position matches your remote preference"
+        if is_remote
+        else f"Location '{job_location}' matches your preference"
+    )
+    _reason_map["salary"] = (
+        f"Salary range aligns with your ${salary_target:,} target"
+        if salary_target
+        else "Salary range aligns with your expectations"
+    )
+    _reason_map["skills"] = (
+        f"Your skills ({', '.join(skills[:3])}) match the job requirements"
+        if skills
+        else "Your skills match the job requirements"
+    )
+    _reason_map["seniority"] = "Seniority level aligns with your preference"
+    _reason_map["company_size"] = "Company size meets your minimum preference"
+
+    # Build concern strings for low-scoring dimensions
+    _concern_map["title"] = "Job title doesn't closely match your target roles"
+    _concern_map["location"] = "Location doesn't match your preferred locations"
+    _concern_map["salary"] = "Salary may be below your minimum requirement"
+    _concern_map["skills"] = "Limited overlap between your skills and job requirements"
+    _concern_map["seniority"] = "Seniority level may not align with your preference"
+    _concern_map["company_size"] = "Company size may not meet your preference"
+
+    for dim, (dim_score, dim_max) in breakdown.items():
+        if dim_max <= 0:
+            continue
+        ratio = dim_score / dim_max
+        if ratio >= 0.7 and dim in _reason_map:
+            top_reasons.append(_reason_map[dim])
+        elif ratio < 0.3 and dim in _concern_map:
+            concerns.append(_concern_map[dim])
+
+    # Limit to top 3 reasons
+    top_reasons = top_reasons[:3]
+
+    # Build summary
+    if top_reasons:
+        summary = "; ".join(top_reasons[:2])
+    else:
+        summary = f"Heuristic match score: {score}/100"
+
+    confidence = _derive_confidence(score)
+
+    return {
+        "summary": summary,
+        "top_reasons": top_reasons,
+        "concerns": concerns,
+        "confidence": confidence,
+    }
+
+
+def parse_rationale(rationale_str: str | None) -> dict:
+    """Parse a rationale string into a structured dict.
+
+    Handles three cases:
+    1. None/empty -> default empty structure
+    2. Valid JSON with top_reasons -> return as-is
+    3. Valid JSON without top_reasons or plain text -> wrap in fallback structure
+
+    This ensures backward compatibility with existing plain-text rationale
+    strings stored in Match.rationale.
+    """
+    if not rationale_str:
+        return {
+            "summary": "",
+            "top_reasons": [],
+            "concerns": [],
+            "confidence": "Medium",
+        }
+
+    try:
+        data = json.loads(rationale_str)
+        if isinstance(data, dict) and "top_reasons" in data:
+            return data
+        # Valid JSON but missing top_reasons -- wrap it
+        return {
+            "summary": str(data),
+            "top_reasons": [str(data)],
+            "concerns": [],
+            "confidence": "Medium",
+        }
+    except (json.JSONDecodeError, TypeError):
+        # Plain text rationale
+        return {
+            "summary": rationale_str,
+            "top_reasons": [rationale_str],
+            "concerns": [],
+            "confidence": "Medium",
+        }
