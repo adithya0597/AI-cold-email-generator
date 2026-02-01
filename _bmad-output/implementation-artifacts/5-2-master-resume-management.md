@@ -1,6 +1,6 @@
 # Story 5.2: Master Resume Management
 
-Status: review
+Status: done
 
 ## Story
 
@@ -156,6 +156,7 @@ SIMPLE (score: 2/16, overridden to SIMPLE by user flag)
 
 ### Change Log
 - 2026-02-01: Created documents API + router registration + 14 tests
+- 2026-02-01: Code review fixes — storage failure returns 502 (not phantom path), added deleted_by to soft-delete queries, strengthened test assertions, added storage failure test (now 15 tests)
 
 ### File List
 **Created:**

@@ -1,6 +1,6 @@
 # Story 5.4: ATS Optimization Logic
 
-Status: review
+Status: done
 
 ## Story
 
@@ -133,6 +133,7 @@ SIMPLE (score: 2/16, overridden to SIMPLE by user flag)
 
 ### Change Log
 - 2026-02-01: Added ATS analysis endpoint + 6 tests
+- 2026-02-01: Code review fixes — defensive enum type comparison, moved validation inside session block
 
 ### File List
 **Created:**

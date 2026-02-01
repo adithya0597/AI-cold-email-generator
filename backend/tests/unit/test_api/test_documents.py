@@ -95,6 +95,22 @@ class TestUploadMasterResume:
         assert mock_sess.commit.call_count == 1
 
     @pytest.mark.asyncio
+    async def test_upload_returns_502_on_storage_failure(self):
+        """Returns 502 when storage upload fails (no phantom path created)."""
+        mock_file = _make_upload_file()
+
+        with (
+            patch("app.services.storage_service.upload_file", new_callable=AsyncMock, side_effect=RuntimeError("S3 down")),
+        ):
+            from app.api.v1.documents import upload_master_resume
+
+            with pytest.raises(Exception) as exc_info:
+                await upload_master_resume(file=mock_file, user_id="user123")
+
+        assert exc_info.value.status_code == 502
+        assert "storage" in str(exc_info.value.detail).lower()
+
+    @pytest.mark.asyncio
     async def test_upload_with_parsing_failure_still_creates_document(self):
         """When resume_parser fails, document is still created (parsed=None)."""
         mock_cm, mock_sess = _mock_session_cm()
@@ -149,6 +165,7 @@ class TestArchivePreviousMaster:
         sql_text = str(first_call[0][0])
         assert "UPDATE documents" in sql_text
         assert "deleted_at" in sql_text
+        assert "deleted_by" in sql_text
         assert "archived_by_new_upload" in sql_text
 
 
@@ -342,6 +359,7 @@ class TestDeleteDocument:
         call_args = mock_sess.execute.call_args_list[0]
         sql_text = str(call_args[0][0])
         assert "deleted_at" in sql_text
+        assert "deleted_by" in sql_text
         assert "user_deleted" in sql_text
 
     @pytest.mark.asyncio

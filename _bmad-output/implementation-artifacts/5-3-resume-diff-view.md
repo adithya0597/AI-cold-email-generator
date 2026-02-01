@@ -1,6 +1,6 @@
 # Story 5.3: Resume Diff View
 
-Status: review
+Status: done
 
 ## Story
 
@@ -150,6 +150,7 @@ SIMPLE (score: 2/16, overridden to SIMPLE by user flag)
 
 ### Change Log
 - 2026-02-01: Added diff endpoint + 7 tests
+- 2026-02-01: Code review fixes — defensive enum type comparison (rsplit pattern)
 
 ### File List
 **Created:**

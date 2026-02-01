@@ -88,14 +88,19 @@ async def upload_master_resume(
             )
         except Exception:
             logger.error("Failed to upload to storage for user %s", user_id, exc_info=True)
-            storage_path = f"{user_id}/{filename}"
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="File storage is temporarily unavailable. Please try again.",
+            )
 
         # 2. Soft-delete previous master resume(s)
         now = datetime.now(timezone.utc)
         await session.execute(
             text("""
                 UPDATE documents
-                SET deleted_at = :now, deletion_reason = 'archived_by_new_upload'
+                SET deleted_at = :now,
+                    deleted_by = (SELECT id FROM users WHERE clerk_id = :uid),
+                    deletion_reason = 'archived_by_new_upload'
                 WHERE user_id = (SELECT id FROM users WHERE clerk_id = :uid)
                   AND type = 'resume'
                   AND job_id IS NULL
@@ -252,39 +257,33 @@ async def list_documents(
 
     offset = (page - 1) * page_size
 
-    type_filter = ""
     params: dict = {"uid": user_id, "limit": page_size, "offset": offset}
 
+    # Build queries — type filter uses parameterised :dtype only
+    base_where = """
+        JOIN users u ON d.user_id = u.id
+        WHERE u.clerk_id = :uid
+          AND d.deleted_at IS NULL"""
+
     if doc_type:
-        type_filter = "AND d.type = :dtype"
+        base_where += "\n          AND d.type = :dtype"
         params["dtype"] = doc_type
 
     async with AsyncSessionLocal() as session:
         # Get total count
         count_result = await session.execute(
-            text(f"""
-                SELECT COUNT(*) FROM documents d
-                JOIN users u ON d.user_id = u.id
-                WHERE u.clerk_id = :uid
-                  AND d.deleted_at IS NULL
-                  {type_filter}
-            """),
+            text(f"SELECT COUNT(*) FROM documents d{base_where}"),
             params,
         )
         total = count_result.scalar()
 
         # Get page
         result = await session.execute(
-            text(f"""
-                SELECT d.id, d.type, d.version, d.job_id, d.created_at
-                FROM documents d
-                JOIN users u ON d.user_id = u.id
-                WHERE u.clerk_id = :uid
-                  AND d.deleted_at IS NULL
-                  {type_filter}
-                ORDER BY d.created_at DESC
-                LIMIT :limit OFFSET :offset
-            """),
+            text(
+                f"SELECT d.id, d.type, d.version, d.job_id, d.created_at"
+                f" FROM documents d{base_where}"
+                f" ORDER BY d.created_at DESC LIMIT :limit OFFSET :offset"
+            ),
             params,
         )
         rows = result.mappings().all()
@@ -343,7 +342,8 @@ async def get_document_diff(
                 detail="Document not found.",
             )
 
-        if str(tailored_row["type"]) != "resume" or tailored_row["job_id"] is None:
+        doc_type = str(tailored_row["type"]).rsplit(".", 1)[-1].lower()
+        if doc_type != "resume" or tailored_row["job_id"] is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Diff is only available for tailored resumes (documents with a job_id).",
@@ -481,17 +481,18 @@ async def get_ats_analysis(
         )
         row = doc_result.mappings().first()
 
-    if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found.",
-        )
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
 
-    if str(row["type"]) != "resume" or row["job_id"] is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ATS analysis is only available for tailored resumes (documents with a job_id).",
-        )
+        doc_type = str(row["type"]).rsplit(".", 1)[-1].lower()
+        if doc_type != "resume" or row["job_id"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ATS analysis is only available for tailored resumes (documents with a job_id).",
+            )
 
     # Parse content JSON
     try:
@@ -541,7 +542,9 @@ async def delete_document(
         result = await session.execute(
             text("""
                 UPDATE documents
-                SET deleted_at = :now, deletion_reason = 'user_deleted'
+                SET deleted_at = :now,
+                    deleted_by = (SELECT id FROM users WHERE clerk_id = :uid),
+                    deletion_reason = 'user_deleted'
                 WHERE id = :doc_id::uuid
                   AND user_id = (SELECT id FROM users WHERE clerk_id = :uid)
                   AND deleted_at IS NULL
