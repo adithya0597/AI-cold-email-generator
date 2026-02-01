@@ -20,6 +20,7 @@ import Preferences from './pages/Preferences';
 import BriefingHistory from './pages/BriefingHistory';
 import BriefingDetail from './components/briefing/BriefingDetail';
 import BriefingSettingsPage from './pages/BriefingSettings';
+import Matches from './pages/Matches';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 
@@ -306,6 +307,16 @@ function App() {
                 <ProtectedRoute>
                   <OnboardingGuard>
                     <Dashboard />
+                  </OnboardingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/matches"
+              element={
+                <ProtectedRoute>
+                  <OnboardingGuard>
+                    <Matches />
                   </OnboardingGuard>
                 </ProtectedRoute>
               }
