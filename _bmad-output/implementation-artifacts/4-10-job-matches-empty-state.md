@@ -1,6 +1,6 @@
 # Story 4.10: Job Matches Empty State
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,15 +20,15 @@ so that **I can adjust preferences rather than feel stuck**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Enhance empty state in Matches.tsx (AC: #1, #2, #3, #4)
-  - [ ] 1.1: Replace the current empty state block (lines 117-140) with enhanced version that includes: updated message text, three suggestion items with icons, and preserved "Adjust Preferences" Link
-  - [ ] 1.2: Ensure data-testid="empty-state" is preserved on the container
-  - [ ] 1.3: Add data-testid="empty-suggestions" on the suggestions list
+- [x] Task 1: Enhance empty state in Matches.tsx (AC: #1, #2, #3, #4)
+  - [x] 1.1: Replace the current empty state block (lines 117-140) with enhanced version that includes: updated message text, three suggestion items with icons, and preserved "Adjust Preferences" Link
+  - [x] 1.2: Ensure data-testid="empty-state" is preserved on the container
+  - [x] 1.3: Add data-testid="empty-suggestions" on the suggestions list
 
-- [ ] Task 2: Update frontend tests (AC: #1, #2, #3, #4)
-  - [ ] 2.1: Update existing empty state test in Matches.test.tsx to check for new message text
-  - [ ] 2.2: Add test for suggestion items being rendered
-  - [ ] 2.3: Verify "Adjust Preferences" link still present
+- [x] Task 2: Update frontend tests (AC: #1, #2, #3, #4)
+  - [x] 2.1: Update existing empty state test in Matches.test.tsx to check for new message text
+  - [x] 2.2: Add test for suggestion items being rendered
+  - [x] 2.3: Verify "Adjust Preferences" link still present
 
 ## Dev Notes
 
@@ -113,15 +113,27 @@ frontend/src/services/matches.ts
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.5
 
 ### Route Taken
+SIMPLE (score: 1/16)
 
 ### GSD Subagents Used
+None (direct execution)
 
 ### Debug Log References
+None
 
 ### Completion Notes List
+- Enhanced empty state with search icon, updated message, 3 suggestion items with lightbulb icons
+- Preserved data-testid="empty-state" and "Adjust Preferences" link
+- Added data-testid="empty-suggestions" on suggestions list
+- Updated existing test and added new suggestion items test
 
 ### Change Log
+- 2026-01-31: Implemented enhanced empty state and updated tests
 
 ### File List
+**Modified:**
+- frontend/src/pages/Matches.tsx
+- frontend/src/components/matches/__tests__/Matches.test.tsx

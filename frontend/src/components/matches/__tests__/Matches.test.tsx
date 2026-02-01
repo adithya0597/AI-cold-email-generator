@@ -138,8 +138,24 @@ describe('Matches Page', () => {
 
     render(<Matches />);
     expect(screen.getByTestId('empty-state')).toBeDefined();
-    expect(screen.getByText('All caught up!')).toBeDefined();
+    expect(screen.getByText('No matches today.')).toBeDefined();
+    expect(screen.getByText('Your agent is still searching!')).toBeDefined();
     expect(screen.getByText('Adjust Preferences')).toBeDefined();
+  });
+
+  it('shows suggestion items in empty state', () => {
+    (useMatches as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { data: [], meta: { pagination: { page: 1, per_page: 20, total: 0, total_pages: 0 } } },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<Matches />);
+    const suggestions = screen.getByTestId('empty-suggestions');
+    expect(suggestions).toBeDefined();
+    expect(screen.getByText('Try expanding your location preferences')).toBeDefined();
+    expect(screen.getByText('Consider adding more job titles')).toBeDefined();
+    expect(screen.getByText('Relax salary requirements temporarily')).toBeDefined();
   });
 
   it('renders the first match card', () => {
