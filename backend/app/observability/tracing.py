@@ -143,3 +143,35 @@ def _init_opentelemetry(app: "FastAPI") -> str:
         logger.debug("Celery instrumentation skipped (Celery not available)")
 
     return exporter_label
+
+
+# ---------------------------------------------------------------------------
+# Agent span helper
+# ---------------------------------------------------------------------------
+
+def create_agent_span(
+    agent_type: str,
+    step_name: str,
+    user_id: str,
+) -> trace.Span:
+    """Create a span for agent step execution with standard attributes.
+
+    Usage::
+
+        span = create_agent_span("scout", "search_jobs", user_id)
+        try:
+            # ... agent work ...
+            span.set_status(StatusCode.OK)
+        except Exception as exc:
+            span.set_status(StatusCode.ERROR, str(exc))
+            span.record_exception(exc)
+            raise
+        finally:
+            span.end()
+    """
+    tracer = trace.get_tracer("jobpilot.agents")
+    span = tracer.start_span(f"agent.{agent_type}.{step_name}")
+    span.set_attribute("user_id", user_id)
+    span.set_attribute("agent_type", agent_type)
+    span.set_attribute("step_name", step_name)
+    return span
