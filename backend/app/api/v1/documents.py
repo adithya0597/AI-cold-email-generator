@@ -524,6 +524,85 @@ async def get_ats_analysis(
     }
 
 
+@router.post("/cover-letter")
+async def generate_cover_letter(
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Generate a cover letter for a specific job.
+
+    Accepts ``{"job_id": "<uuid>"}`` in the request body.  Runs the
+    CoverLetterAgent inline and returns the new document_id + content.
+    """
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    job_id = body.get("job_id")
+    if not job_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="job_id is required.",
+        )
+
+    # Verify job exists and belongs to user
+    async with AsyncSessionLocal() as session:
+        job_result = await session.execute(
+            text("""
+                SELECT j.id
+                FROM jobs j
+                JOIN users u ON j.user_id = u.id
+                WHERE j.id = :jid::uuid
+                  AND u.clerk_id = :uid
+            """),
+            {"jid": job_id, "uid": user_id},
+        )
+        job_row = job_result.scalar_one_or_none()
+
+    if not job_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found.",
+        )
+
+    # Run agent inline
+    from app.agents.pro.cover_letter_agent import CoverLetterAgent
+
+    agent = CoverLetterAgent()
+    output = await agent.execute(user_id, {"job_id": job_id})
+
+    if output.action == "cover_letter_failed":
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=output.rationale,
+        )
+
+    # Load the stored document content
+    doc_id = output.data.get("document_id")
+    content = None
+    if doc_id:
+        async with AsyncSessionLocal() as session:
+            doc_result = await session.execute(
+                text("SELECT content FROM documents WHERE id = :did::uuid"),
+                {"did": doc_id},
+            )
+            content_row = doc_result.scalar_one_or_none()
+            if content_row:
+                try:
+                    content = json.loads(content_row)
+                except (json.JSONDecodeError, TypeError):
+                    content = content_row
+
+    return {
+        "document_id": doc_id,
+        "job_id": job_id,
+        "content": content,
+        "word_count": output.data.get("word_count"),
+        "personalization_sources": output.data.get("personalization_sources", []),
+    }
+
+
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,
