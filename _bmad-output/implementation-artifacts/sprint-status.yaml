@@ -52,7 +52,7 @@ development_status:
   0-6-celery-worker-infrastructure: done
   0-7-opentelemetry-tracing-setup: done
   0-8-llm-cost-tracking-middleware: done
-  0-9-error-tracking-integration: backlog
+  0-9-error-tracking-integration: done
   0-10-websocket-infrastructure: backlog
   0-11-email-service-configuration: backlog
   0-12-ci-cd-pipeline-with-automated-tests: backlog
