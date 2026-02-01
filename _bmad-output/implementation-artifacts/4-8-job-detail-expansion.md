@@ -1,6 +1,6 @@
 # Story 4.8: Job Detail Expansion
 
-Status: review
+Status: done
 
 ## Story
 
