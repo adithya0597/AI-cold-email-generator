@@ -12,6 +12,8 @@ Redis key schema::
         total_input:      "12450"
         total_output:     "3210"
         calls:            "17"
+        agent:{type}:cost:  "0.02"      (per-agent breakdown)
+        agent:{type}:calls: "10"        (per-agent breakdown)
     }
 
 Keys auto-expire after 35 days so old months are cleaned up automatically.
@@ -92,6 +94,7 @@ async def track_llm_cost(
     model: str,
     input_tokens: int,
     output_tokens: int,
+    agent_type: Optional[str] = None,
 ) -> float:
     """Record an LLM API call's cost and return the incremental USD amount.
 
@@ -105,6 +108,9 @@ async def track_llm_cost(
         Number of prompt / input tokens consumed.
     output_tokens:
         Number of completion / output tokens consumed.
+    agent_type:
+        Optional agent identifier (e.g. ``job_scout``, ``resume``).
+        When provided, per-agent cost and call counters are also incremented.
 
     Returns
     -------
@@ -121,6 +127,9 @@ async def track_llm_cost(
             pipe.hincrby(key, "total_input", input_tokens)
             pipe.hincrby(key, "total_output", output_tokens)
             pipe.hincrby(key, "calls", 1)
+            if agent_type:
+                pipe.hincrbyfloat(key, f"agent:{agent_type}:cost", cost)
+                pipe.hincrby(key, f"agent:{agent_type}:calls", 1)
             pipe.expire(key, _KEY_TTL_SECONDS)
             results = await pipe.execute()
 
@@ -193,6 +202,7 @@ async def get_all_costs_summary() -> Dict[str, Any]:
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     pattern = f"llm_cost:*:{month}"
     users: List[Dict[str, Any]] = []
+    agents: Dict[str, Dict[str, Any]] = {}
     total_cost = 0.0
     total_calls = 0
 
@@ -215,6 +225,18 @@ async def get_all_costs_summary() -> Dict[str, Any]:
                     "total_cost": round(user_cost, 4),
                     "calls": user_calls,
                 })
+                # Aggregate per-agent breakdown from hash fields
+                for field, value in data.items():
+                    if field.startswith("agent:") and field.endswith(":cost"):
+                        agent_name = field.split(":")[1]
+                        if agent_name not in agents:
+                            agents[agent_name] = {"total_cost": 0.0, "calls": 0}
+                        agents[agent_name]["total_cost"] += float(value)
+                    elif field.startswith("agent:") and field.endswith(":calls"):
+                        agent_name = field.split(":")[1]
+                        if agent_name not in agents:
+                            agents[agent_name] = {"total_cost": 0.0, "calls": 0}
+                        agents[agent_name]["calls"] += int(value)
             if cursor == 0:
                 break
         await r.aclose()
@@ -228,10 +250,17 @@ async def get_all_costs_summary() -> Dict[str, Any]:
     days_in_month = 30  # approximation
     projected = total_cost / max(day_of_month, 1) * days_in_month
 
+    # Round agent costs for output
+    agents_list = [
+        {"agent_type": name, "total_cost": round(info["total_cost"], 4), "calls": info["calls"]}
+        for name, info in sorted(agents.items(), key=lambda x: x[1]["total_cost"], reverse=True)
+    ]
+
     return {
         "month": month,
         "total_cost_today": round(total_cost, 4),
         "total_calls": total_calls,
         "projected_month_end": round(projected, 2),
         "users": sorted(users, key=lambda u: u["total_cost"], reverse=True),
+        "agents": agents_list,
     }

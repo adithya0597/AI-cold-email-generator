@@ -48,10 +48,10 @@ development_status:
   0-2-row-level-security-policies: done
   0-3-clerk-authentication-integration: done
   0-4-api-foundation-with-versioning: done
-  0-5-redis-cache-and-queue-setup: backlog
-  0-6-celery-worker-infrastructure: backlog
-  0-7-opentelemetry-tracing-setup: backlog
-  0-8-llm-cost-tracking-middleware: backlog
+  0-5-redis-cache-and-queue-setup: done
+  0-6-celery-worker-infrastructure: done
+  0-7-opentelemetry-tracing-setup: done
+  0-8-llm-cost-tracking-middleware: done
   0-9-error-tracking-integration: backlog
   0-10-websocket-infrastructure: backlog
   0-11-email-service-configuration: backlog
