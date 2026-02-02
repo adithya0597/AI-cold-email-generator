@@ -7,6 +7,7 @@
 
 import { useStealthStatus, useToggleStealth } from '../services/privacy';
 import BlocklistManager from '../components/privacy/BlocklistManager';
+import PrivacyProof from '../components/privacy/PrivacyProof';
 
 export default function Privacy() {
   const { data, isLoading, error } = useStealthStatus();
@@ -100,6 +101,8 @@ export default function Privacy() {
       </div>
 
       <BlocklistManager stealthEnabled={stealthEnabled} />
+
+      <PrivacyProof stealthEnabled={stealthEnabled} />
     </div>
   );
 }

@@ -25,10 +25,32 @@ export interface BlocklistResponse {
   total: number;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  company_name: string;
+  action_type: string;
+  details: string | null;
+  created_at: string | null;
+}
+
+export interface PrivacyProofEntry {
+  company_name: string;
+  note: string | null;
+  last_checked: string;
+  exposure_count: number;
+  blocked_actions: AuditLogEntry[];
+}
+
+export interface PrivacyProofResponse {
+  entries: PrivacyProofEntry[];
+  total: number;
+}
+
 const privacyKeys = {
   all: ['privacy'] as const,
   stealth: () => [...privacyKeys.all, 'stealth'] as const,
   blocklist: () => [...privacyKeys.all, 'blocklist'] as const,
+  proof: () => [...privacyKeys.all, 'proof'] as const,
 };
 
 export function useStealthStatus() {
@@ -90,6 +112,27 @@ export function useRemoveFromBlocklist() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: privacyKeys.blocklist() });
+    },
+  });
+}
+
+export function usePrivacyProof() {
+  const api = useApiClient();
+  return useQuery({
+    queryKey: privacyKeys.proof(),
+    queryFn: async (): Promise<PrivacyProofResponse> => {
+      const res = await api.get('/api/v1/privacy/proof');
+      return res.data;
+    },
+  });
+}
+
+export function useDownloadReport() {
+  const api = useApiClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get('/api/v1/privacy/proof/report');
+      return res.data;
     },
   });
 }
