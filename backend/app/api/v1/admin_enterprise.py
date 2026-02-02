@@ -379,3 +379,87 @@ async def save_roi_schedule(
             )
 
     return ROIScheduleResponse(**schedule)
+
+
+# ---------- PII Alerts Endpoints ----------
+
+
+@router.get("/pii-alerts", response_model=PIIAlertsResponse)
+async def get_pii_alerts(
+    admin_ctx: AdminContext = Depends(require_admin),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    category: Optional[str] = Query(None, description="Filter by pattern category"),
+    date_from: Optional[date] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    date_to: Optional[date] = Query(None, description="End date filter (YYYY-MM-DD)"),
+):
+    """Return anonymized PII detection alerts with pagination and filters.
+
+    Alert records contain hashed user_id, pattern category, and detection
+    count. They NEVER contain actual user names, user IDs, or matched text.
+    """
+    from datetime import datetime, timezone
+
+    from sqlalchemy import func, select
+
+    from app.db.engine import AsyncSessionLocal
+    from app.db.models import AgentActivity
+
+    async with AsyncSessionLocal() as session:
+        # Base query: PII alerts for this org (stored in data->org_id)
+        base = select(AgentActivity).where(
+            AgentActivity.event_type == "pii_detected",
+            AgentActivity.data["org_id"].astext == admin_ctx.org_id,
+        )
+
+        if category:
+            # Filter where category appears in the categories JSON array
+            base = base.where(
+                AgentActivity.data["categories"].astext.contains(category)
+            )
+
+        if date_from:
+            base = base.where(
+                AgentActivity.created_at >= datetime.combine(
+                    date_from, datetime.min.time(), tzinfo=timezone.utc
+                )
+            )
+
+        if date_to:
+            base = base.where(
+                AgentActivity.created_at <= datetime.combine(
+                    date_to, datetime.max.time(), tzinfo=timezone.utc
+                )
+            )
+
+        # Count total
+        count_q = select(func.count()).select_from(base.subquery())
+        total_result = await session.execute(count_q)
+        total = total_result.scalar() or 0
+
+        # Paginate
+        offset = (page - 1) * page_size
+        query = base.order_by(AgentActivity.created_at.desc()).offset(offset).limit(page_size)
+        result = await session.execute(query)
+        rows = result.scalars().all()
+
+    alerts = []
+    for row in rows:
+        data = row.data or {}
+        alerts.append(
+            PIIAlertSchema(
+                id=str(row.id),
+                hashed_user_id=data.get("hashed_user_id", ""),
+                categories=data.get("categories", []),
+                detection_count=data.get("detection_count", 0),
+                created_at=row.created_at.isoformat() if row.created_at else "",
+                severity=row.severity or "warning",
+            )
+        )
+
+    return PIIAlertsResponse(
+        alerts=alerts,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
