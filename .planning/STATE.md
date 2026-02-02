@@ -150,6 +150,10 @@ Progress: [███████████████████████
 - [10-7]: 10% threshold band for at_benchmark classification in ROI metric comparisons
 - [10-7]: Cost per placement uses seat_cost_monthly from Organization.settings (default $500)
 - [10-7]: Schedule config stored in Organization.settings["roi_report_schedule"] JSONB key
+- [10-8]: PII detection uses regex (no ML) -- simple, fast, auditable; ML-based detection deferred to future story
+- [10-8]: Anonymized alerts use SHA-256 hash of user_id -- AgentActivity.data never contains actual user_id, name, or matched text
+- [10-8]: check_pii() is public method (not _check_pii) for clean external API from agents
+- [10-8]: resume_agent.py is a stub -- PII hook wiring deferred to Story 5-1
 
 ### Pending Todos
 
@@ -166,5 +170,5 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 10-7 (ROI Reporting). ROIReportService with 4 aggregate metrics, benchmark comparison, 3 API endpoints, React dashboard, 44 tests passing.
+Stopped at: Completed 10-8 (PII Detection Alerts). PIIDetectionService with regex-based scanning, anonymized SHA-256 alerts, admin config/alerts API, 23 tests passing.
 Resume file: None
