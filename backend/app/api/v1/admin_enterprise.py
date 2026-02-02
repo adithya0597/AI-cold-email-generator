@@ -463,3 +463,149 @@ async def get_pii_alerts(
         page=page,
         page_size=page_size,
     )
+
+
+# ---------- Billing schemas ----------
+
+
+class BillingSummaryResponse(BaseModel):
+    seats_allocated: int
+    seats_used: int
+    seats_available: int
+    monthly_cost: float
+    cost_per_seat: float
+    billing_cycle_start: str
+    billing_cycle_end: str
+    volume_discount_percent: float
+
+
+class UpdateSeatsRequest(BaseModel):
+    seat_count: int = Field(..., gt=0, description="New seat allocation count")
+
+
+class InvoiceSchema(BaseModel):
+    invoice_date: str
+    amount: float
+    seats: int
+    cost_per_seat: float
+    discount_percent: float
+    status: str
+    reference_id: str
+
+
+class InvoicesResponse(BaseModel):
+    invoices: List[InvoiceSchema]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class CostTrendItem(BaseModel):
+    month: str
+    cost: float
+
+
+# ---------- Billing endpoints ----------
+
+
+@router.get("/billing", response_model=BillingSummaryResponse)
+async def get_billing_summary(
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Return billing summary for the admin's organization.
+
+    Includes seat allocation, usage, monthly cost, and volume discount.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.billing import BillingService
+
+    service = BillingService()
+
+    async with AsyncSessionLocal() as session:
+        summary = await service.get_billing_summary(
+            session=session,
+            org_id=admin_ctx.org_id,
+        )
+
+    return BillingSummaryResponse(**summary)
+
+
+@router.put("/billing/seats", response_model=BillingSummaryResponse)
+async def update_billing_seats(
+    body: UpdateSeatsRequest,
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Update seat allocation for the admin's organization.
+
+    Validates that the new seat count is not below active member count.
+    Creates an AuditLog entry recording the change.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.billing import BillingService
+
+    service = BillingService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            try:
+                updated = await service.update_seats(
+                    session=session,
+                    org_id=admin_ctx.org_id,
+                    new_seat_count=body.seat_count,
+                    admin_user_id=admin_ctx.user_id,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+    return BillingSummaryResponse(**updated)
+
+
+@router.get("/billing/invoices", response_model=InvoicesResponse)
+async def get_billing_invoices(
+    admin_ctx: AdminContext = Depends(require_admin),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
+):
+    """Return paginated invoice history for the admin's organization.
+
+    Invoices are computed records from billing history (no real payment processor).
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.billing import BillingService
+
+    service = BillingService()
+
+    async with AsyncSessionLocal() as session:
+        result = await service.get_invoices(
+            session=session,
+            org_id=admin_ctx.org_id,
+            page=page,
+            per_page=per_page,
+        )
+
+    return InvoicesResponse(**result)
+
+
+@router.get("/billing/cost-trend", response_model=List[CostTrendItem])
+async def get_billing_cost_trend(
+    admin_ctx: AdminContext = Depends(require_admin),
+    months: int = Query(6, ge=1, le=24, description="Number of months"),
+):
+    """Return cost trend for the last N months.
+
+    Returns list of monthly cost totals extracted from billing history.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.billing import BillingService
+
+    service = BillingService()
+
+    async with AsyncSessionLocal() as session:
+        trend = await service.get_cost_trend(
+            session=session,
+            org_id=admin_ctx.org_id,
+            months=months,
+        )
+
+    return [CostTrendItem(**item) for item in trend]
