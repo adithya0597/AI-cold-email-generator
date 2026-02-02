@@ -621,6 +621,7 @@ async def list_followups(
                 "FROM followup_suggestions fs "
                 "WHERE fs.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
                 "AND fs.dismissed_at IS NULL "
+                "AND fs.sent_at IS NULL "
                 "ORDER BY fs.followup_date ASC"
             ),
             {"uid": user_id},
@@ -675,3 +676,105 @@ async def dismiss_followup(
         )
 
     return {"status": "dismissed", "suggestion_id": suggestion_id}
+
+
+class UpdateDraftRequest(BaseModel):
+    """Request body for PATCH /followups/{id}/draft."""
+
+    draft_subject: Optional[str] = None
+    draft_body: Optional[str] = None
+
+
+@router.patch("/followups/{suggestion_id}/draft")
+async def update_followup_draft(
+    suggestion_id: str,
+    body: UpdateDraftRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Update the draft subject and/or body of a follow-up suggestion."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    # Build SET clauses dynamically based on provided fields
+    set_parts: list[str] = []
+    params: dict = {"sid": suggestion_id, "uid": user_id}
+
+    if body.draft_subject is not None:
+        set_parts.append("draft_subject = :subj")
+        params["subj"] = body.draft_subject
+    if body.draft_body is not None:
+        set_parts.append("draft_body = :body")
+        params["body"] = body.draft_body
+
+    if not set_parts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of draft_subject or draft_body must be provided",
+        )
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                f"UPDATE followup_suggestions "
+                f"SET {', '.join(set_parts)} "
+                f"WHERE id = :sid "
+                f"AND user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                f"AND dismissed_at IS NULL"
+            ),
+            params,
+        )
+        await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Follow-up suggestion not found or already dismissed",
+        )
+
+    return {"status": "updated", "suggestion_id": suggestion_id}
+
+
+@router.post("/followups/{suggestion_id}/send")
+async def send_followup(
+    suggestion_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Mark a follow-up suggestion as sent (and optionally send via email service)."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        # Fetch suggestion to confirm it exists and get draft data
+        result = await session.execute(
+            text(
+                "SELECT id, draft_subject, draft_body "
+                "FROM followup_suggestions "
+                "WHERE id = :sid "
+                "AND user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND dismissed_at IS NULL AND sent_at IS NULL"
+            ),
+            {"sid": suggestion_id, "uid": user_id},
+        )
+        row = result.mappings().first()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Follow-up suggestion not found, already dismissed, or already sent",
+            )
+
+        # Mark as sent
+        await session.execute(
+            text(
+                "UPDATE followup_suggestions SET sent_at = NOW() WHERE id = :sid"
+            ),
+            {"sid": suggestion_id},
+        )
+        await session.commit()
+
+    return {
+        "status": "sent",
+        "suggestion_id": suggestion_id,
+    }

@@ -252,6 +252,7 @@ class FollowUpAgent(BaseAgent):
                     "  draft_subject TEXT, "
                     "  draft_body TEXT, "
                     "  dismissed_at TIMESTAMPTZ, "
+                    "  sent_at TIMESTAMPTZ, "
                     "  created_at TIMESTAMPTZ DEFAULT NOW()"
                     ")"
                 )

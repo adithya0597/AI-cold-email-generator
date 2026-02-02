@@ -27,6 +27,7 @@ import BriefingSettingsPage from './pages/BriefingSettings';
 import Matches from './pages/Matches';
 import Applications from './pages/Applications';
 import Pipeline from './pages/Pipeline';
+import FollowUps from './pages/FollowUps';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 
@@ -144,6 +145,18 @@ function App() {
                     }
                   >
                     Pipeline
+                  </NavLink>
+                  <NavLink
+                    to="/followups"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    Follow-ups
                   </NavLink>
                   <NavLink
                     to="/settings"
@@ -273,6 +286,18 @@ function App() {
                 Pipeline
               </NavLink>
               <NavLink
+                to="/followups"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                Follow-ups
+              </NavLink>
+              <NavLink
                 to="/settings"
                 className={({ isActive }) =>
                   `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
@@ -336,6 +361,14 @@ function App() {
                 element={
                   <OnboardingGuard>
                     <Pipeline />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/followups"
+                element={
+                  <OnboardingGuard>
+                    <FollowUps />
                   </OnboardingGuard>
                 }
               />
