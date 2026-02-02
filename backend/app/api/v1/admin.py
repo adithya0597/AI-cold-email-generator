@@ -346,3 +346,244 @@ async def get_metrics(
             "end": effective_end.isoformat(),
         },
     )
+
+
+# ---------- Autonomy Configuration endpoints ----------
+
+
+@router.get("/autonomy-config", response_model=None)
+async def get_autonomy_config(
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Return the current organization autonomy config and restrictions.
+
+    Reads from the Organization.settings JSONB 'autonomy' key.
+    Returns defaults if no config has been set.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.autonomy_config import (
+        AutonomyConfigService,
+        OrgAutonomyConfigResponse,
+    )
+
+    service = AutonomyConfigService()
+
+    async with AsyncSessionLocal() as session:
+        config = await service.get_org_autonomy_config(session, admin_ctx.org_id)
+
+    return OrgAutonomyConfigResponse(
+        default_autonomy=config.default_autonomy,
+        max_autonomy=config.max_autonomy,
+        restrictions=config.restrictions,
+    )
+
+
+@router.put("/autonomy-config", response_model=None)
+async def update_autonomy_config(
+    body: "OrgAutonomySettingsBody",
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Update organization autonomy config (default level, max level, restrictions).
+
+    Validates that default_autonomy does not exceed max_autonomy.
+    Logs an audit event with before/after values.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.audit import log_audit_event
+    from app.services.enterprise.autonomy_config import (
+        AutonomyConfigService,
+        OrgAutonomyConfigResponse,
+        OrgAutonomySettings,
+        OrgRestrictions,
+    )
+
+    service = AutonomyConfigService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            old_config = await service.get_org_autonomy_config(
+                session, admin_ctx.org_id
+            )
+
+            new_config = OrgAutonomySettings(
+                default_autonomy=body.default_autonomy,
+                max_autonomy=body.max_autonomy,
+                restrictions=OrgRestrictions(**body.restrictions.model_dump())
+                if body.restrictions
+                else old_config.restrictions,
+            )
+
+            try:
+                result = await service.update_org_autonomy_config(
+                    session, admin_ctx.org_id, new_config
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+            await log_audit_event(
+                session=session,
+                org_id=admin_ctx.org_id,
+                actor_id=admin_ctx.user_id,
+                action="update_autonomy_config",
+                resource_type="organization",
+                resource_id=admin_ctx.org_id,
+                changes={
+                    "before": old_config.model_dump(),
+                    "after": result.model_dump(),
+                },
+            )
+
+    return OrgAutonomyConfigResponse(
+        default_autonomy=result.default_autonomy,
+        max_autonomy=result.max_autonomy,
+        restrictions=result.restrictions,
+    )
+
+
+@router.put("/users/{user_id}/autonomy", response_model=None)
+async def set_user_autonomy(
+    user_id: UUID,
+    body: "EmployeeAutonomyBody",
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Set per-employee autonomy override.
+
+    Validates the requested level against the organization's max_autonomy.
+    Caps the level if it exceeds the ceiling. Logs an audit event.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.audit import log_audit_event
+    from app.services.enterprise.autonomy_config import AutonomyConfigService
+
+    service = AutonomyConfigService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            is_valid = await service.validate_employee_autonomy(
+                session, admin_ctx.org_id, body.level
+            )
+            if not is_valid:
+                config = await service.get_org_autonomy_config(
+                    session, admin_ctx.org_id
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Requested level '{body.level}' exceeds organization "
+                        f"maximum autonomy '{config.max_autonomy}'"
+                    ),
+                )
+
+            effective_level = await service.set_employee_autonomy(
+                session, admin_ctx.org_id, str(user_id), body.level
+            )
+
+            await log_audit_event(
+                session=session,
+                org_id=admin_ctx.org_id,
+                actor_id=admin_ctx.user_id,
+                action="set_employee_autonomy",
+                resource_type="user_autonomy",
+                resource_id=str(user_id),
+                changes={
+                    "requested_level": body.level,
+                    "effective_level": effective_level,
+                },
+            )
+
+    return {"user_id": str(user_id), "effective_level": effective_level}
+
+
+@router.get("/autonomy-config/restrictions", response_model=None)
+async def get_restrictions(
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Return current organization restrictions.
+
+    Reads from the Organization.settings JSONB 'autonomy.restrictions' key.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.autonomy_config import AutonomyConfigService
+
+    service = AutonomyConfigService()
+
+    async with AsyncSessionLocal() as session:
+        config = await service.get_org_autonomy_config(session, admin_ctx.org_id)
+
+    return config.restrictions
+
+
+@router.put("/autonomy-config/restrictions", response_model=None)
+async def update_restrictions(
+    body: "RestrictionsBody",
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Update organization restrictions (blocked companies, industries, approval rules).
+
+    Logs an audit event with before/after values.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.audit import log_audit_event
+    from app.services.enterprise.autonomy_config import (
+        AutonomyConfigService,
+        OrgRestrictions,
+    )
+
+    service = AutonomyConfigService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            old_config = await service.get_org_autonomy_config(
+                session, admin_ctx.org_id
+            )
+            old_restrictions = old_config.restrictions
+
+            new_restrictions = OrgRestrictions(
+                blocked_companies=body.blocked_companies,
+                blocked_industries=body.blocked_industries,
+                require_approval_industries=body.require_approval_industries,
+            )
+
+            result = await service.update_restrictions(
+                session, admin_ctx.org_id, new_restrictions
+            )
+
+            await log_audit_event(
+                session=session,
+                org_id=admin_ctx.org_id,
+                actor_id=admin_ctx.user_id,
+                action="update_restrictions",
+                resource_type="organization",
+                resource_id=admin_ctx.org_id,
+                changes={
+                    "before": old_restrictions.model_dump(),
+                    "after": result.model_dump(),
+                },
+            )
+
+    return result
+
+
+# ---------- Autonomy request/response body schemas ----------
+
+
+class _OrgRestrictionsBody(BaseModel):
+    blocked_companies: List[str] = []
+    blocked_industries: List[str] = []
+    require_approval_industries: List[str] = []
+
+
+class OrgAutonomySettingsBody(BaseModel):
+    default_autonomy: str
+    max_autonomy: str
+    restrictions: Optional[_OrgRestrictionsBody] = None
+
+
+class EmployeeAutonomyBody(BaseModel):
+    level: str
+
+
+class RestrictionsBody(BaseModel):
+    blocked_companies: List[str] = []
+    blocked_industries: List[str] = []
+    require_approval_industries: List[str] = []
