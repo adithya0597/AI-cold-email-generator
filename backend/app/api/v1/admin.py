@@ -56,6 +56,31 @@ class InvitationResponse(BaseModel):
     expires_at: datetime
 
 
+# ---------- Autonomy request/response body schemas ----------
+
+
+class _OrgRestrictionsBody(BaseModel):
+    blocked_companies: List[str] = []
+    blocked_industries: List[str] = []
+    require_approval_industries: List[str] = []
+
+
+class OrgAutonomySettingsBody(BaseModel):
+    default_autonomy: str
+    max_autonomy: str
+    restrictions: Optional[_OrgRestrictionsBody] = None
+
+
+class EmployeeAutonomyBody(BaseModel):
+    level: str
+
+
+class RestrictionsBody(BaseModel):
+    blocked_companies: List[str] = []
+    blocked_industries: List[str] = []
+    require_approval_industries: List[str] = []
+
+
 # ---------- Metrics schemas ----------
 
 
@@ -380,7 +405,7 @@ async def get_autonomy_config(
 
 @router.put("/autonomy-config", response_model=None)
 async def update_autonomy_config(
-    body: "OrgAutonomySettingsBody",
+    body: OrgAutonomySettingsBody,
     admin_ctx: AdminContext = Depends(require_admin),
 ):
     """Update organization autonomy config (default level, max level, restrictions).
@@ -562,28 +587,3 @@ async def update_restrictions(
             )
 
     return result
-
-
-# ---------- Autonomy request/response body schemas ----------
-
-
-class _OrgRestrictionsBody(BaseModel):
-    blocked_companies: List[str] = []
-    blocked_industries: List[str] = []
-    require_approval_industries: List[str] = []
-
-
-class OrgAutonomySettingsBody(BaseModel):
-    default_autonomy: str
-    max_autonomy: str
-    restrictions: Optional[_OrgRestrictionsBody] = None
-
-
-class EmployeeAutonomyBody(BaseModel):
-    level: str
-
-
-class RestrictionsBody(BaseModel):
-    blocked_companies: List[str] = []
-    blocked_industries: List[str] = []
-    require_approval_industries: List[str] = []

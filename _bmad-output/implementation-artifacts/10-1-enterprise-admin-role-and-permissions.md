@@ -1,6 +1,6 @@
 # Story 10.1: Enterprise Admin Role and Permissions
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -94,28 +94,31 @@ So that **I can manage my organization's workforce deployment without accessing 
 ## Dev Agent Record
 
 ### Agent Model Used
-
-*(to be filled by dev agent)*
+Claude Opus 4.5
 
 ### Route Taken
-
-*(to be filled by dev agent)*
+COMPLEX (score: 11/16)
 
 ### GSD Subagents Used
-
-*(to be filled by dev agent)*
+- gsd-plan-checker (1 iteration — issues found, plan amended inline)
+- gsd-executor × 6 (Wave 1: Task 1, Wave 2: Tasks 2+3+4 parallel, Wave 3: Tasks 5+6 parallel)
 
 ### Debug Log References
-
-*(to be filled by dev agent)*
+N/A — all tasks completed without failures
 
 ### Completion Notes List
-
-*(to be filled by dev agent)*
+- OrgRole enum (ADMIN/MEMBER) + Organization model (with SoftDeleteMixin) + OrganizationMember model (with unique constraint) added to models.py
+- org_id nullable FK added to User model
+- AuditLog model (immutable, created_at only) added to models.py
+- log_audit_event() async helper in services/enterprise/audit.py
+- Migration 00002_enterprise_admin.sql with 3 tables, RLS policies, indexes, triggers
+- set_org_rls_context() added to rls.py for SET LOCAL app.current_org_id
+- require_admin FastAPI dependency returns AdminContext or raises 403
+- Both /llm-costs and /dlq endpoints migrated to require_admin RBAC
+- 15 tests covering all 7 acceptance criteria
 
 ### Change Log
-
-*(to be filled by dev agent)*
+- 2026-02-02: Story implemented via COMPLEX route with 3-wave GSD execution
 
 ### File List
 
