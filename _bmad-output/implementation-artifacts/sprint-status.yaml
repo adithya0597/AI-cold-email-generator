@@ -150,7 +150,7 @@ development_status:
   6-4-email-status-detection: done
   6-5-kanban-pipeline-view: review
   6-6-pipeline-list-view: review
-  6-7-follow-up-agent-implementation: backlog
+  6-7-follow-up-agent-implementation: review
   6-8-follow-up-draft-generation: backlog
   6-9-follow-up-tracking: backlog
   6-10-stealth-mode-activation: backlog

@@ -221,6 +221,48 @@ def agent_pipeline(self, user_id: str, task_data: dict) -> Dict[str, Any]:
         raise self.retry(exc=exc)
 
 
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.agent_followup",
+    queue="agents",
+    max_retries=2,
+    default_retry_delay=60,
+)
+def agent_followup(self, user_id: str, task_data: dict) -> Dict[str, Any]:
+    """Run the Follow-up agent for a user.
+
+    Evaluates applications for overdue follow-ups, generates draft
+    messages, and stores suggestions for user review.
+    """
+    logger.info("agent_followup started for user=%s", user_id)
+
+    async def _execute():
+        from app.agents.core.followup_agent import FollowUpAgent
+        from app.observability.langfuse_client import create_agent_trace, flush_traces
+
+        trace = create_agent_trace(
+            user_id=user_id,
+            agent_type="followup",
+            celery_task_id=self.request.id,
+        )
+        try:
+            agent = FollowUpAgent()
+            result = await agent.run(user_id, task_data)
+            trace.update(output=result.to_dict())
+            return result.to_dict()
+        except Exception as exc:
+            trace.update(level="ERROR", status_message=str(exc))
+            raise
+        finally:
+            flush_traces()
+
+    try:
+        return _run_async(_execute())
+    except Exception as exc:
+        logger.exception("agent_followup failed for user=%s", user_id)
+        raise self.retry(exc=exc)
+
+
 # ---------------------------------------------------------------------------
 # Briefing tasks (briefings queue)
 # ---------------------------------------------------------------------------

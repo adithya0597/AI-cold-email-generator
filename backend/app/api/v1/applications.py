@@ -575,3 +575,103 @@ async def batch_approve(
         failed=failed,
         details=details,
     )
+
+
+# ---------------------------------------------------------------------------
+# Follow-up suggestions endpoints (Story 6-7)
+# ---------------------------------------------------------------------------
+
+
+class FollowupSuggestionItem(BaseModel):
+    """A single follow-up suggestion."""
+
+    id: str
+    application_id: str
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    status: Optional[str] = None
+    followup_date: Optional[str] = None
+    draft_subject: Optional[str] = None
+    draft_body: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class FollowupListResponse(BaseModel):
+    """Response for GET /followups."""
+
+    suggestions: List[FollowupSuggestionItem]
+    total: int
+
+
+@router.get("/followups", response_model=FollowupListResponse)
+async def list_followups(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return pending (not dismissed) follow-up suggestions for the user."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                "SELECT fs.id, fs.application_id, fs.company, fs.job_title, "
+                "fs.status, fs.followup_date, fs.draft_subject, fs.draft_body, "
+                "fs.created_at "
+                "FROM followup_suggestions fs "
+                "WHERE fs.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND fs.dismissed_at IS NULL "
+                "ORDER BY fs.followup_date ASC"
+            ),
+            {"uid": user_id},
+        )
+        rows = result.mappings().all()
+
+    suggestions = [
+        FollowupSuggestionItem(
+            id=str(r["id"]),
+            application_id=str(r["application_id"]),
+            company=str(r["company"]) if r["company"] else None,
+            job_title=str(r["job_title"]) if r["job_title"] else None,
+            status=str(r["status"]) if r["status"] else None,
+            followup_date=str(r["followup_date"]) if r["followup_date"] else None,
+            draft_subject=str(r["draft_subject"]) if r["draft_subject"] else None,
+            draft_body=str(r["draft_body"]) if r["draft_body"] else None,
+            created_at=str(r["created_at"]) if r["created_at"] else None,
+        )
+        for r in rows
+    ]
+
+    return FollowupListResponse(suggestions=suggestions, total=len(suggestions))
+
+
+@router.patch("/followups/{suggestion_id}/dismiss")
+async def dismiss_followup(
+    suggestion_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Dismiss a follow-up suggestion."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                "UPDATE followup_suggestions "
+                "SET dismissed_at = NOW() "
+                "WHERE id = :sid "
+                "AND user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND dismissed_at IS NULL"
+            ),
+            {"sid": suggestion_id, "uid": user_id},
+        )
+        await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Follow-up suggestion not found or already dismissed",
+        )
+
+    return {"status": "dismissed", "suggestion_id": suggestion_id}
