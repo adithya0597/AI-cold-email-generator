@@ -79,7 +79,7 @@ CLAUDE.MD
 
 # Documentation to exclude
 references/
-research/
+/research/
 IMPLEMENTATION_SUMMARY.md
 CLEANUP_SUMMARY.md
 *.tmp.md

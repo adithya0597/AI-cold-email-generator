@@ -174,20 +174,20 @@ development_status:
   7-8-h1b-filter-in-job-search: done
   7-9-sponsor-data-freshness-infrastructure: done
   7-10-h1b-empty-state: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
 
   # ═══════════════════════════════════════════
   # Epic 8: Interview Preparation (8 stories)
   # ═══════════════════════════════════════════
-  epic-8: backlog
-  8-1-interview-intel-agent-implementation: backlog
-  8-2-company-research-synthesis: backlog
-  8-3-interviewer-background-research: backlog
-  8-4-common-interview-questions: backlog
-  8-5-star-response-suggestions: backlog
-  8-6-prep-briefing-delivery: backlog
-  8-7-calendar-integration-for-interview-detection: backlog
-  8-8-interview-prep-empty-state: backlog
+  epic-8: done
+  8-1-interview-intel-agent-implementation: done
+  8-2-company-research-synthesis: done
+  8-3-interviewer-background-research: done
+  8-4-common-interview-questions: done
+  8-5-star-response-suggestions: done
+  8-6-prep-briefing-delivery: done
+  8-7-calendar-integration-for-interview-detection: done
+  8-8-interview-prep-empty-state: done
   epic-8-retrospective: optional
 
   # ═══════════════════════════════════════════
