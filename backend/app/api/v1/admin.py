@@ -8,13 +8,49 @@ that the caller holds an organization admin role.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from pydantic import BaseModel, EmailStr
 
 from app.auth.admin import AdminContext, require_admin
 from app.observability.cost_tracker import get_all_costs_summary
 from app.worker.dlq import dlq_length, get_dlq_contents
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ---------- Request/Response schemas ----------
+
+
+class RowErrorSchema(BaseModel):
+    row_number: int
+    email: str
+    error_reason: str
+
+
+class BulkUploadResponse(BaseModel):
+    total: int
+    valid: int
+    invalid: int
+    queued: int
+    errors: List[RowErrorSchema]
+
+
+class InviteRequest(BaseModel):
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
+class InvitationResponse(BaseModel):
+    id: UUID
+    email: str
+    status: str
+    created_at: datetime
+    expires_at: datetime
 
 
 @router.get("/llm-costs")
@@ -42,3 +78,136 @@ async def get_dlq(
     entries = await get_dlq_contents(queue=queue, limit=limit)
     total = await dlq_length(queue=queue)
     return {"queue": queue, "total": total, "entries": entries}
+
+
+@router.post("/employees/bulk-upload", response_model=BulkUploadResponse)
+async def bulk_upload_employees(
+    file: UploadFile,
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Upload a CSV of employee emails for bulk onboarding.
+
+    Parses and validates the CSV, queues valid rows for invitation
+    processing via a Celery task, and returns a summary with errors.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.audit import log_audit_event
+    from app.services.enterprise.csv_onboarding import CSVOnboardingService
+
+    content = await file.read()
+    service = CSVOnboardingService()
+
+    try:
+        rows = service.parse_csv(content)
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            validation = await service.validate_rows(rows, admin_ctx.org_id, session)
+
+            queued = 0
+            if validation.valid_rows:
+                from app.worker.tasks import bulk_onboard_employees
+
+                bulk_onboard_employees.delay(
+                    org_id=admin_ctx.org_id,
+                    valid_rows=validation.valid_rows,
+                )
+                queued = len(validation.valid_rows)
+
+            summary = {
+                "total": len(rows),
+                "valid": len(validation.valid_rows),
+                "invalid": len(validation.invalid_rows),
+                "queued": queued,
+            }
+
+            await log_audit_event(
+                session=session,
+                org_id=admin_ctx.org_id,
+                actor_id=admin_ctx.user_id,
+                action="bulk_upload",
+                resource_type="csv_onboarding",
+                changes=summary,
+            )
+
+    errors = [
+        RowErrorSchema(
+            row_number=e.row_number,
+            email=e.email,
+            error_reason=e.error_reason,
+        )
+        for e in validation.invalid_rows
+    ]
+
+    return BulkUploadResponse(
+        total=summary["total"],
+        valid=summary["valid"],
+        invalid=summary["invalid"],
+        queued=summary["queued"],
+        errors=errors,
+    )
+
+
+@router.post("/employees/invite", response_model=InvitationResponse)
+async def invite_employee(
+    body: InviteRequest,
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Send an invitation email to an employee.
+
+    Creates an invitation record, sends a branded email with accept/decline
+    links, and returns the invitation summary. Any existing pending invitation
+    for the same email in this org is automatically revoked.
+    """
+    from app.config import settings
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.invitation import InvitationService
+    from app.services.transactional_email import send_invitation_email
+
+    service = InvitationService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            invitation = await service.create_invitation(
+                session=session,
+                org_id=admin_ctx.org_id,
+                email=str(body.email),
+                invited_by=admin_ctx.user_id,
+                first_name=body.first_name,
+                last_name=body.last_name,
+            )
+
+            # Build accept/decline URLs
+            base_url = getattr(settings, "FRONTEND_URL", "https://app.jobpilot.ai")
+            token = str(invitation.token)
+            accept_url = f"{base_url}/invitations/{token}/accept"
+            decline_url = f"{base_url}/invitations/{token}/decline"
+
+            # Send invitation email (fire-and-forget, don't block on failure)
+            try:
+                await send_invitation_email(
+                    to=str(body.email),
+                    admin_name=admin_ctx.org_name,  # Use org name as admin display
+                    company_name=admin_ctx.org_name,
+                    accept_url=accept_url,
+                    decline_url=decline_url,
+                    recipient_first_name=body.first_name,
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Failed to send invitation email to %s, invitation still created",
+                    body.email,
+                )
+
+            return InvitationResponse(
+                id=invitation.id,
+                email=invitation.email,
+                status=invitation.status.value,
+                created_at=invitation.created_at,
+                expires_at=invitation.expires_at,
+            )

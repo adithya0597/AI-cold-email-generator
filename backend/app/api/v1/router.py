@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, agents, applications, auth, briefings, documents, h1b, health, integrations, learned_preferences, matches, onboarding, preferences, privacy, users, webhooks, ws
+from app.api.v1 import admin, agents, applications, auth, briefings, documents, h1b, health, integrations, invitations, learned_preferences, matches, onboarding, preferences, privacy, users, webhooks, ws
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -34,6 +34,9 @@ api_router.include_router(applications.router)
 api_router.include_router(integrations.router)
 api_router.include_router(privacy.router)
 api_router.include_router(h1b.router)
+
+# --- public (token-based) ---
+api_router.include_router(invitations.router)
 
 # --- webhooks ---
 api_router.include_router(webhooks.router)
