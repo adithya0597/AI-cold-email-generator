@@ -13,11 +13,24 @@ vi.mock('@clerk/clerk-react', () => ({
   useUser: () => ({ user: null, isLoaded: true }),
 }));
 
+// Mock privacy service to avoid QueryClient requirement
+vi.mock('./services/privacy', () => ({
+  useStealthStatus: vi.fn(() => ({
+    data: { stealth_enabled: false, tier: 'free', eligible: false },
+    isLoading: false,
+    error: null,
+  })),
+}));
+
 // Mock the API service to prevent real HTTP calls
 vi.mock('./services/api', () => ({
   utilityService: {
     checkHealth: vi.fn().mockResolvedValue({ status: 'healthy' }),
   },
+  useApiClient: vi.fn(() => ({
+    get: vi.fn().mockResolvedValue({ data: {} }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+  })),
   default: {
     get: vi.fn(),
     post: vi.fn(),

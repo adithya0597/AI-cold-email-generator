@@ -28,14 +28,17 @@ import Matches from './pages/Matches';
 import Applications from './pages/Applications';
 import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
+import Privacy from './pages/Privacy';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
+import { useStealthStatus } from './services/privacy';
 
 // Initialise Sentry before the React tree renders.
 initSentry();
 
 function App() {
   const [healthStatus, setHealthStatus] = useState<{ status: string } | null>(null);
+  const { data: stealthData } = useStealthStatus();
 
   useEffect(() => {
     checkApiHealth();
@@ -189,6 +192,14 @@ function App() {
                   </span>
                 </div>
                 <SignedIn>
+                  {stealthData?.stealth_enabled && (
+                    <span
+                      data-testid="stealth-badge"
+                      className="inline-flex items-center rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-green-400"
+                    >
+                      Stealth
+                    </span>
+                  )}
                   <EmergencyBrake />
                   <UserButton afterSignOutUrl="/" />
                 </SignedIn>
@@ -369,6 +380,14 @@ function App() {
                 element={
                   <OnboardingGuard>
                     <FollowUps />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/privacy"
+                element={
+                  <OnboardingGuard>
+                    <Privacy />
                   </OnboardingGuard>
                 }
               />
