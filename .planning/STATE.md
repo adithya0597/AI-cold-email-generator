@@ -10,16 +10,16 @@
 Phase: 4 of 9 (Job Discovery)
 Plan: 12 of ? in current phase
 Status: In progress
-Last activity: 2026-02-01 -- Completed 0-10 (WebSocket Infrastructure)
+Last activity: 2026-02-02 -- Completed 10-8 (PII Detection Alerts)
 
-Progress: [██████████████████████████████████░] ~59%
+Progress: [████████████████████████████████████░] ~61%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34
+- Total plans completed: 36
 - Average duration: ~6 min
-- Total execution time: ~199 min
+- Total execution time: ~204 min
 
 **By Phase:**
 
@@ -146,6 +146,10 @@ Progress: [███████████████████████
 - [0-10]: Close code 4401 for WS auth rejection (WebSocket spec 4000-4999 range for app-specific codes)
 - [0-10]: REST events endpoint returns oldest-first order for chronological client replay after reconnect
 - [0-10]: Exponential backoff (1s-30s) with 10% jitter replaces fixed 3s reconnect on both WS components
+- [10-7]: satisfaction_score stubs to None until feedback table exists; benchmark comparison returns "no_data"
+- [10-7]: 10% threshold band for at_benchmark classification in ROI metric comparisons
+- [10-7]: Cost per placement uses seat_cost_monthly from Organization.settings (default $500)
+- [10-7]: Schedule config stored in Organization.settings["roi_report_schedule"] JSONB key
 
 ### Pending Todos
 
@@ -161,6 +165,6 @@ Progress: [███████████████████████
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Completed 0-10 (WebSocket Infrastructure). JWT auth on WS endpoint, REST events fallback, exponential backoff reconnect, 14 tests passing.
+Last session: 2026-02-02
+Stopped at: Completed 10-7 (ROI Reporting). ROIReportService with 4 aggregate metrics, benchmark comparison, 3 API endpoints, React dashboard, 44 tests passing.
 Resume file: None
