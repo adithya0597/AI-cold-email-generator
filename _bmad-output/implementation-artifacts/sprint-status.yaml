@@ -165,7 +165,7 @@ development_status:
   # ═══════════════════════════════════════════
   epic-7: in-progress
   7-1-h1b-data-aggregation-pipeline: review
-  7-2-h1bgrader-integration: backlog
+  7-2-h1bgrader-integration: review
   7-3-myvisajobs-integration: backlog
   7-4-uscis-public-data-integration: backlog
   7-5-sponsor-scorecard-ui: backlog

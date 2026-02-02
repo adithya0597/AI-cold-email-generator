@@ -133,16 +133,45 @@ class SponsorRecord:
 
 
 async def fetch_h1bgrader(company_name: str) -> Optional[SourceData]:
-    """Fetch H1B data from H1BGrader. Stub returning mock data."""
-    logger.info("fetch_h1bgrader stub called for %s", company_name)
-    return SourceData(
-        source="h1bgrader",
-        company_name=company_name,
-        total_petitions=150,
-        approval_rate=0.92,
-        raw_data={"stub": True, "source": "h1bgrader"},
-        fetched_at=datetime.now(timezone.utc),
-    )
+    """Fetch H1B data from DOL public disclosure files.
+
+    Uses the same underlying public data that H1BGrader uses (DOL/USCIS
+    disclosure files). Returns None on failure so the pipeline continues.
+    """
+    from app.services.research.dol_client import DOLDisclosureClient
+
+    try:
+        client = DOLDisclosureClient()
+        stats = await client.fetch_company_stats(company_name)
+        if stats is None:
+            logger.info("No DOL data found for %s", company_name)
+            return None
+
+        return SourceData(
+            source="h1bgrader",
+            company_name=company_name,
+            total_petitions=stats.total_petitions,
+            approval_rate=stats.approval_rate,
+            avg_wage=stats.avg_wage,
+            raw_data={
+                "attribution": "Source: DOL H1B Disclosure Data (H1BGrader equivalent)",
+                "source_url": "https://www.dol.gov/agencies/eta/foreign-labor/performance",
+                "trend": stats.trend,
+                "approved_count": stats.approved_count,
+                "denied_count": stats.denied_count,
+                "withdrawn_count": stats.withdrawn_count,
+            },
+            fetched_at=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        logger.error(
+            "fetch_h1bgrader (DOL) failed for %s: %s",
+            company_name,
+            exc,
+            exc_info=True,
+            extra={"source": "h1bgrader", "company": company_name},
+        )
+        return None
 
 
 async def fetch_myvisajobs(company_name: str) -> Optional[SourceData]:
