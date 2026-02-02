@@ -30,11 +30,11 @@ So that **I can manage my organization's workforce deployment without accessing 
   - [ ] 2.1 Add `AuditLog` model to `backend/app/db/models.py` with fields: `id` (UUID, PK), `org_id` (FK to Organization), `actor_id` (FK to User), `action` (String, not null — e.g., "invite_employee", "update_autonomy"), `resource_type` (String — e.g., "organization_member", "invitation"), `resource_id` (UUID, nullable), `changes` (JSONB, default `{}`), `created_at` (DateTime, server_default=now)
   - [ ] 2.2 Create `log_audit_event()` async helper function in `backend/app/services/enterprise/audit.py` that accepts session, org_id, actor_id, action, resource_type, resource_id, changes and inserts an AuditLog record
 
-- [ ] Task 3: Create database migration (AC: #1, #4, #5)
-  - [ ] 3.1 Create migration file `supabase/migrations/00002_enterprise_admin.sql` with CREATE TABLE for `organizations`, `organization_members`, `audit_logs`
-  - [ ] 3.2 Add unique constraint on `organization_members(org_id, user_id)`
-  - [ ] 3.3 Add RLS policies: `organization_members` scoped by org_id, admin sees all org members, member sees only self; `audit_logs` readable only by org admins
-  - [ ] 3.4 Add RLS policy preventing admin from accessing `user_applications`, `user_pipelines`, or similar individual-level tables via org membership
+- [x] Task 3: Create database migration (AC: #1, #4, #5)
+  - [x] 3.1 Create migration file `supabase/migrations/00002_enterprise_admin.sql` with CREATE TABLE for `organizations`, `organization_members`, `audit_logs`
+  - [x] 3.2 Add unique constraint on `organization_members(org_id, user_id)`
+  - [x] 3.3 Add RLS policies: `organization_members` scoped by org_id, admin sees all org members, member sees only self; `audit_logs` readable only by org admins
+  - [x] 3.4 Add RLS policy preventing admin from accessing `user_applications`, `user_pipelines`, or similar individual-level tables via org membership
 
 - [ ] Task 4: Create require_admin dependency (AC: #2, #3)
   - [ ] 4.1 Create `backend/app/auth/admin.py` with `require_admin` FastAPI dependency
