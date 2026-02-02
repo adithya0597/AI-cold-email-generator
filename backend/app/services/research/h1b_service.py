@@ -175,17 +175,46 @@ async def fetch_h1bgrader(company_name: str) -> Optional[SourceData]:
 
 
 async def fetch_myvisajobs(company_name: str) -> Optional[SourceData]:
-    """Fetch H1B data from MyVisaJobs. Stub returning mock data."""
-    logger.info("fetch_myvisajobs stub called for %s", company_name)
-    return SourceData(
-        source="myvisajobs",
-        company_name=company_name,
-        avg_wage=125000.0,
-        wage_source="myvisajobs",
-        domain=f"{normalize_company_name(company_name).replace(' ', '')}.com",
-        raw_data={"stub": True, "source": "myvisajobs"},
-        fetched_at=datetime.now(timezone.utc),
-    )
+    """Fetch LCA wage/job title data from DOL disclosure files.
+
+    Uses the same underlying public data that MyVisaJobs uses. Extracts
+    average wages, top job titles, and worksite locations.
+    Returns None on failure so the pipeline continues.
+    """
+    from app.services.research.myvisajobs_client import MyVisaJobsClient
+
+    try:
+        client = MyVisaJobsClient()
+        details = await client.fetch_company_details(company_name)
+        if details is None:
+            logger.info("No MyVisaJobs-equivalent data found for %s", company_name)
+            return None
+
+        normalized = normalize_company_name(company_name)
+        return SourceData(
+            source="myvisajobs",
+            company_name=company_name,
+            avg_wage=details.avg_wage,
+            wage_source="dol_lca",
+            domain=f"{normalized.replace(' ', '')}.com",
+            raw_data={
+                "attribution": "Source: DOL LCA Data (MyVisaJobs equivalent)",
+                "source_url": "https://www.dol.gov/agencies/eta/foreign-labor/performance",
+                "top_job_titles": details.top_job_titles,
+                "worksite_locations": details.worksite_locations,
+                "total_lca_records": details.total_records,
+            },
+            fetched_at=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        logger.error(
+            "fetch_myvisajobs (DOL LCA) failed for %s: %s",
+            company_name,
+            exc,
+            exc_info=True,
+            extra={"source": "myvisajobs", "company": company_name},
+        )
+        return None
 
 
 async def fetch_uscis(company_name: str) -> Optional[SourceData]:
