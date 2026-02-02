@@ -167,7 +167,7 @@ development_status:
   7-1-h1b-data-aggregation-pipeline: review
   7-2-h1bgrader-integration: review
   7-3-myvisajobs-integration: review
-  7-4-uscis-public-data-integration: backlog
+  7-4-uscis-public-data-integration: review
   7-5-sponsor-scorecard-ui: backlog
   7-6-approval-rate-visualization: backlog
   7-7-verified-sponsor-badge-on-job-cards: backlog

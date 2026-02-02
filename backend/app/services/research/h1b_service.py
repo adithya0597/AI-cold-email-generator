@@ -218,18 +218,45 @@ async def fetch_myvisajobs(company_name: str) -> Optional[SourceData]:
 
 
 async def fetch_uscis(company_name: str) -> Optional[SourceData]:
-    """Fetch H1B data from USCIS public LCA data. Stub returning mock data."""
-    logger.info("fetch_uscis stub called for %s", company_name)
-    return SourceData(
-        source="uscis",
-        company_name=company_name,
-        total_petitions=200,
-        approval_rate=0.88,
-        avg_wage=130000.0,
-        wage_source="uscis_lca",
-        raw_data={"stub": True, "source": "uscis"},
-        fetched_at=datetime.now(timezone.utc),
-    )
+    """Fetch official USCIS H1B employer data.
+
+    Uses the USCIS H1B Employer Data Hub — the most authoritative source
+    for approval/denial statistics. Returns None on failure.
+    """
+    from app.services.research.uscis_client import USCISClient
+
+    try:
+        client = USCISClient()
+        stats = await client.fetch_employer_stats(company_name)
+        if stats is None:
+            logger.info("No USCIS data found for %s", company_name)
+            return None
+
+        return SourceData(
+            source="uscis",
+            company_name=company_name,
+            total_petitions=stats.total_petitions,
+            approval_rate=stats.approval_rate,
+            wage_source="uscis_lca",
+            raw_data={
+                "attribution": "Source: USCIS H1B Employer Data Hub",
+                "source_url": "https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub",
+                "initial_approvals": stats.initial_approvals,
+                "initial_denials": stats.initial_denials,
+                "continuing_approvals": stats.continuing_approvals,
+                "continuing_denials": stats.continuing_denials,
+            },
+            fetched_at=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        logger.error(
+            "fetch_uscis failed for %s: %s",
+            company_name,
+            exc,
+            exc_info=True,
+            extra={"source": "uscis", "company": company_name},
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------
