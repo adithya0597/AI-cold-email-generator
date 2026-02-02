@@ -110,7 +110,7 @@ describe('Pipeline page', () => {
     expect(screen.getByTestId('count-closed')).toHaveTextContent('1');
   });
 
-  it('renders empty state when no applications', () => {
+  it('renders empty state with encouraging message when no applications', () => {
     mockUseApplications.mockReturnValue({
       data: { applications: [], total: 0, has_more: false },
       isLoading: false,
@@ -120,7 +120,66 @@ describe('Pipeline page', () => {
     renderWithProviders(<Pipeline />);
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
-    expect(screen.getByText('Your pipeline is empty')).toBeInTheDocument();
+    expect(screen.getByText("Your pipeline is empty. Let's fill it up!")).toBeInTheDocument();
+  });
+
+  it('renders Kanban flow illustration in empty state', () => {
+    mockUseApplications.mockReturnValue({
+      data: { applications: [], total: 0, has_more: false },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useApplications>);
+
+    renderWithProviders(<Pipeline />);
+
+    expect(screen.getByTestId('kanban-illustration')).toBeInTheDocument();
+    expect(screen.getByText('Applied')).toBeInTheDocument();
+    expect(screen.getByText('Screening')).toBeInTheDocument();
+    expect(screen.getByText('Interview')).toBeInTheDocument();
+    expect(screen.getByText('Offer')).toBeInTheDocument();
+  });
+
+  it('renders CTA button linking to matches in empty state', () => {
+    mockUseApplications.mockReturnValue({
+      data: { applications: [], total: 0, has_more: false },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useApplications>);
+
+    renderWithProviders(<Pipeline />);
+
+    const cta = screen.getByTestId('cta-find-matches');
+    expect(cta).toBeInTheDocument();
+    expect(cta).toHaveTextContent('Find your first matches');
+    expect(cta).toHaveAttribute('href', '/matches');
+  });
+
+  it('renders email tip in empty state', () => {
+    mockUseApplications.mockReturnValue({
+      data: { applications: [], total: 0, has_more: false },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useApplications>);
+
+    renderWithProviders(<Pipeline />);
+
+    expect(screen.getByTestId('email-tip')).toBeInTheDocument();
+    expect(screen.getByText('Connect your email to auto-track existing applications')).toBeInTheDocument();
+  });
+
+  it('renders import link in empty state', () => {
+    mockUseApplications.mockReturnValue({
+      data: { applications: [], total: 0, has_more: false },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useApplications>);
+
+    renderWithProviders(<Pipeline />);
+
+    const importLink = screen.getByTestId('import-link');
+    expect(importLink).toBeInTheDocument();
+    expect(importLink).toHaveTextContent('Import applications');
+    expect(importLink).toHaveAttribute('href', '/import');
   });
 
   it('renders loading spinner when loading', () => {

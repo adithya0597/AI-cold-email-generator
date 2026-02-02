@@ -90,11 +90,39 @@ export default function Pipeline() {
   if (applications.length === 0) {
     return (
       <div data-testid="empty-state" className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white p-12 text-center">
-        <div className="mb-4 text-5xl">📊</div>
-        <h2 className="text-xl font-semibold text-gray-900">Your pipeline is empty</h2>
-        <p className="mt-3 max-w-md text-sm text-gray-500">
-          Apply to jobs and they'll appear here as cards you can track through your hiring process.
+        <h2 className="text-xl font-semibold text-gray-900">Your pipeline is empty. Let's fill it up!</h2>
+
+        {/* Kanban flow illustration */}
+        <div data-testid="kanban-illustration" className="mt-6 flex items-center gap-2">
+          {['Applied', 'Screening', 'Interview', 'Offer'].map((stage, i) => (
+            <div key={stage} className="flex items-center gap-2">
+              <div className="rounded-md bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 border border-indigo-200">
+                {stage}
+              </div>
+              {i < 3 && <span className="text-gray-400">→</span>}
+            </div>
+          ))}
+        </div>
+
+        <a
+          href="/matches"
+          data-testid="cta-find-matches"
+          className="mt-6 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+        >
+          Find your first matches
+        </a>
+
+        <p data-testid="email-tip" className="mt-4 max-w-md text-sm text-gray-500">
+          Connect your email to auto-track existing applications
         </p>
+
+        <a
+          href="/import"
+          data-testid="import-link"
+          className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+        >
+          Import applications
+        </a>
       </div>
     );
   }
