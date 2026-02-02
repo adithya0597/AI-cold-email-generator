@@ -71,6 +71,7 @@ celery_app.conf.update(
         "app.worker.tasks.agent_*": {"queue": "agents"},
         "app.worker.tasks.briefing_*": {"queue": "briefings"},
         "app.worker.tasks.scrape_*": {"queue": "scraping"},
+        "app.worker.tasks.h1b_*": {"queue": "scraping"},
         "app.worker.tasks.*": {"queue": "default"},
     },
 

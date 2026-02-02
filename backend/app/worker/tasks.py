@@ -439,6 +439,40 @@ def cleanup_zombie_tasks() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# H1B data pipeline tasks (scraping queue)
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.h1b_refresh_pipeline",
+    queue="scraping",
+    max_retries=2,
+    default_retry_delay=300,
+)
+def h1b_refresh_pipeline(self, company_names: list | None = None) -> Dict[str, Any]:
+    """Run the H1B data aggregation pipeline.
+
+    Fetches sponsor data from H1BGrader, MyVisaJobs, and USCIS, then
+    normalizes, deduplicates, and upserts into h1b_sponsors table.
+    """
+    logger.info("h1b_refresh_pipeline started, companies=%s", company_names)
+
+    async def _execute():
+        from app.services.research.h1b_service import run_h1b_pipeline
+
+        return await run_h1b_pipeline(company_names)
+
+    try:
+        result = _run_async(_execute())
+        logger.info("h1b_refresh_pipeline completed: %s", result)
+        return result
+    except Exception as exc:
+        logger.exception("h1b_refresh_pipeline failed")
+        raise self.retry(exc=exc)
+
+
+# ---------------------------------------------------------------------------
 # Celery beat schedule (periodic tasks)
 # ---------------------------------------------------------------------------
 
@@ -450,6 +484,10 @@ celery_app.conf.beat_schedule = {
     "cleanup-zombie-tasks": {
         "task": "app.worker.tasks.cleanup_zombie_tasks",
         "schedule": 300,  # Every 5 minutes (in seconds)
+    },
+    "h1b-refresh-pipeline": {
+        "task": "app.worker.tasks.h1b_refresh_pipeline",
+        "schedule": 7 * 24 * 60 * 60,  # Weekly (in seconds)
     },
 }
 
