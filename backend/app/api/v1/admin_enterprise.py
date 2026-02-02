@@ -303,3 +303,79 @@ async def update_pii_config(
         whitelist=body.whitelist,
         default_patterns=DEFAULT_PATTERNS,
     )
+
+
+# ---------- ROI Report Endpoints ----------
+
+
+@router.get("/reports/roi", response_model=ROIMetricsResponse)
+async def get_roi_metrics(
+    admin_ctx: AdminContext = Depends(require_admin),
+    start_date: Optional[date] = Query(
+        None,
+        description="Start date (YYYY-MM-DD). Defaults to first day of current month.",
+    ),
+    end_date: Optional[date] = Query(
+        None, description="End date (YYYY-MM-DD). Defaults to today."
+    ),
+):
+    """Return ROI metrics with benchmark comparisons for the admin's org.
+
+    All metrics use aggregate queries only (COUNT, AVG, SUM).
+    No individual user data is returned.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.roi_report import ROIReportService
+
+    service = ROIReportService()
+
+    async with AsyncSessionLocal() as session:
+        metrics = await service.compute_metrics(
+            session=session,
+            org_id=admin_ctx.org_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    return ROIMetricsResponse(**metrics)
+
+
+@router.get("/reports/roi/schedule", response_model=ROIScheduleResponse)
+async def get_roi_schedule(
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Return the current ROI report schedule configuration."""
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.roi_report import ROIReportService
+
+    service = ROIReportService()
+
+    async with AsyncSessionLocal() as session:
+        schedule = await service.get_schedule(session, admin_ctx.org_id)
+
+    return ROIScheduleResponse(**schedule)
+
+
+@router.post("/reports/roi/schedule", response_model=ROIScheduleResponse)
+async def save_roi_schedule(
+    body: ROIScheduleRequest,
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Save ROI report schedule config to Organization.settings.
+
+    Stores under key 'roi_report_schedule' in the JSONB settings field.
+    """
+    from app.db.engine import AsyncSessionLocal
+    from app.services.enterprise.roi_report import ROIReportService
+
+    service = ROIReportService()
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            schedule = await service.save_schedule(
+                session=session,
+                org_id=admin_ctx.org_id,
+                schedule_config=body.model_dump(),
+            )
+
+    return ROIScheduleResponse(**schedule)
