@@ -7,10 +7,11 @@ All endpoints require admin RBAC via require_admin dependency.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth.admin import AdminContext, require_admin
 
@@ -35,6 +36,83 @@ class AtRiskListResponse(BaseModel):
 class NudgeResponse(BaseModel):
     status: str
     message: str
+
+
+class ROIBenchmarkDetail(BaseModel):
+    benchmark_value: float
+    comparison: str
+
+
+class ROIBenchmarks(BaseModel):
+    time_to_placement_days: ROIBenchmarkDetail
+    cost_per_placement: ROIBenchmarkDetail
+    engagement_rate: ROIBenchmarkDetail
+    satisfaction_score: ROIBenchmarkDetail
+
+
+class ROIPeriod(BaseModel):
+    start_date: str
+    end_date: str
+
+
+class ROIMetricsResponse(BaseModel):
+    cost_per_placement: Optional[float] = None
+    time_to_placement_days: Optional[float] = None
+    engagement_rate: float
+    satisfaction_score: Optional[float] = None
+    period: ROIPeriod
+    benchmarks: ROIBenchmarks
+
+
+class ROIScheduleRequest(BaseModel):
+    enabled: bool = False
+    recipients: List[str] = []
+
+
+class ROIScheduleResponse(BaseModel):
+    enabled: bool
+    recipients: List[str]
+
+
+# ---------- PII Detection schemas ----------
+
+
+class PIIPatternSchema(BaseModel):
+    pattern: str = Field(..., description="Regex pattern string")
+    category: str = Field(..., description="Pattern category (e.g. internal_email)")
+    description: str = Field("", description="Human-readable description")
+    enabled: bool = Field(True, description="Whether this pattern is active")
+
+
+class PIIConfigRequest(BaseModel):
+    patterns: List[PIIPatternSchema] = Field(
+        default_factory=list, description="Custom PII patterns"
+    )
+    whitelist: List[str] = Field(
+        default_factory=list, description="Terms to exclude from detection"
+    )
+
+
+class PIIConfigResponse(BaseModel):
+    patterns: List[Dict[str, Any]]
+    whitelist: List[str]
+    default_patterns: List[Dict[str, Any]]
+
+
+class PIIAlertSchema(BaseModel):
+    id: str
+    hashed_user_id: str
+    categories: List[str]
+    detection_count: int
+    created_at: str
+    severity: str
+
+
+class PIIAlertsResponse(BaseModel):
+    alerts: List[PIIAlertSchema]
+    total: int
+    page: int
+    page_size: int
 
 
 # ---------- Endpoints ----------
@@ -138,4 +216,90 @@ async def send_nudge(
     return NudgeResponse(
         status="sent",
         message="Re-engagement nudge sent successfully.",
+    )
+
+
+# ---------- PII Configuration Endpoints ----------
+
+
+@router.get("/pii-config", response_model=PIIConfigResponse)
+async def get_pii_config(
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Return the current PII detection configuration for the organization.
+
+    Includes custom patterns, whitelist, and built-in default patterns.
+    """
+    from sqlalchemy import select
+
+    from app.db.engine import AsyncSessionLocal
+    from app.db.models import Organization
+    from app.services.enterprise.pii_detection import DEFAULT_PATTERNS
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Organization.settings).where(
+                Organization.id == admin_ctx.org_id
+            )
+        )
+        settings = result.scalar() or {}
+
+    return PIIConfigResponse(
+        patterns=settings.get("pii_patterns", []),
+        whitelist=settings.get("pii_whitelist", []),
+        default_patterns=DEFAULT_PATTERNS,
+    )
+
+
+@router.put("/pii-config", response_model=PIIConfigResponse)
+async def update_pii_config(
+    body: PIIConfigRequest,
+    admin_ctx: AdminContext = Depends(require_admin),
+):
+    """Update PII detection patterns and whitelist for the organization.
+
+    Validates all regex patterns compile correctly before saving.
+    """
+    from sqlalchemy import select, update
+
+    from app.db.engine import AsyncSessionLocal
+    from app.db.models import Organization
+    from app.services.enterprise.pii_detection import (
+        DEFAULT_PATTERNS,
+        PIIDetectionService,
+    )
+
+    # Validate regexes compile
+    pattern_dicts = [p.model_dump() for p in body.patterns]
+    errors = PIIDetectionService.validate_patterns(pattern_dicts)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Invalid regex patterns", "errors": errors},
+        )
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            # Fetch current settings
+            result = await session.execute(
+                select(Organization.settings).where(
+                    Organization.id == admin_ctx.org_id
+                )
+            )
+            current_settings = result.scalar() or {}
+
+            # Update PII-specific keys, preserve other settings
+            current_settings["pii_patterns"] = pattern_dicts
+            current_settings["pii_whitelist"] = body.whitelist
+
+            await session.execute(
+                update(Organization)
+                .where(Organization.id == admin_ctx.org_id)
+                .values(settings=current_settings)
+            )
+
+    return PIIConfigResponse(
+        patterns=pattern_dicts,
+        whitelist=body.whitelist,
+        default_patterns=DEFAULT_PATTERNS,
     )
