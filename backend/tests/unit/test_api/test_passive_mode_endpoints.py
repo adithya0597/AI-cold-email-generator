@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.api.v1 import privacy as privacy_module
 from app.api.v1.privacy import router
 from app.auth.clerk import get_current_user_id
 
@@ -23,6 +24,14 @@ def _mock_session_cm():
     mock_cm.__aenter__ = AsyncMock(return_value=mock_sess)
     mock_cm.__aexit__ = AsyncMock(return_value=False)
     return mock_cm, mock_sess
+
+
+@pytest.fixture(autouse=True)
+def _reset_tables_flag():
+    """Reset the _tables_ensured flag before each test."""
+    privacy_module._tables_ensured = False
+    yield
+    privacy_module._tables_ensured = False
 
 
 class TestGetPassiveMode:
@@ -40,7 +49,10 @@ class TestGetPassiveMode:
         settings_result.mappings.return_value.first.return_value = None
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             settings_result,
         ]
@@ -70,7 +82,10 @@ class TestGetPassiveMode:
         settings_result.mappings.return_value.first.return_value = None
 
         mock_sess.execute.side_effect = [
-            MagicMock(),
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             settings_result,
         ]
@@ -96,7 +111,10 @@ class TestUpdatePassiveMode:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             MagicMock(),  # UPSERT
         ]
@@ -125,7 +143,10 @@ class TestUpdatePassiveMode:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
         ]
 
@@ -138,6 +159,21 @@ class TestUpdatePassiveMode:
                 )
 
         assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_update_invalid_frequency_returns_422(self):
+        """PUT /passive-mode returns 422 for invalid frequency value."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.put(
+                    "/api/v1/privacy/passive-mode",
+                    json={"search_frequency": "every_second"},
+                )
+
+        assert resp.status_code == 422
 
 
 class TestActivateSprint:
@@ -152,7 +188,10 @@ class TestActivateSprint:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             MagicMock(),  # UPSERT sprint
         ]

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useApplications, useUpdateApplicationStatus } from '../services/applications';
 import type { ApplicationItem } from '../services/applications';
 import KanbanCard from '../components/pipeline/KanbanCard';
@@ -104,25 +105,25 @@ export default function Pipeline() {
           ))}
         </div>
 
-        <a
-          href="/matches"
+        <Link
+          to="/matches"
           data-testid="cta-find-matches"
           className="mt-6 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
         >
           Find your first matches
-        </a>
+        </Link>
 
         <p data-testid="email-tip" className="mt-4 max-w-md text-sm text-gray-500">
           Connect your email to auto-track existing applications
         </p>
 
-        <a
-          href="/import"
+        <Link
+          to="/import"
           data-testid="import-link"
           className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
         >
           Import applications
-        </a>
+        </Link>
       </div>
     );
   }

@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.api.v1 import privacy as privacy_module
 from app.api.v1.privacy import router
 from app.auth.clerk import get_current_user_id
 
@@ -23,6 +24,14 @@ def _mock_session_cm():
     mock_cm.__aenter__ = AsyncMock(return_value=mock_sess)
     mock_cm.__aexit__ = AsyncMock(return_value=False)
     return mock_cm, mock_sess
+
+
+@pytest.fixture(autouse=True)
+def _reset_tables_flag():
+    """Reset the _tables_ensured flag before each test."""
+    privacy_module._tables_ensured = False
+    yield
+    privacy_module._tables_ensured = False
 
 
 # ---------------------------------------------------------------------------
@@ -56,8 +65,10 @@ class TestGetPrivacyProof:
         audit_result.mappings.return_value.all.return_value = [audit_row]
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE blocklist
-            MagicMock(),  # CREATE TABLE audit
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             blocklist_result,
             audit_result,
         ]
@@ -86,8 +97,10 @@ class TestGetPrivacyProof:
         empty_result.mappings.return_value.all.return_value = []
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE blocklist
-            MagicMock(),  # CREATE TABLE audit
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             empty_result,  # blocklist
             empty_result,  # audit
         ]
@@ -110,7 +123,7 @@ class TestGetPrivacyProof:
 class TestDownloadReport:
     @pytest.mark.asyncio
     async def test_download_report(self):
-        """GET /proof/report returns JSON privacy report."""
+        """GET /proof/report returns JSON privacy report without user_id."""
         mock_cm, mock_sess = _mock_session_cm()
 
         blocklist_row = MagicMock()
@@ -126,8 +139,10 @@ class TestDownloadReport:
         audit_result.mappings.return_value.all.return_value = []
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE blocklist
-            MagicMock(),  # CREATE TABLE audit
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             blocklist_result,
             audit_result,
         ]
@@ -144,3 +159,4 @@ class TestDownloadReport:
         assert len(data["blocklisted_companies"]) == 1
         assert data["blocklisted_companies"][0]["company_name"] == "Acme Corp"
         assert "generated_at" in data
+        assert "user_id" not in data

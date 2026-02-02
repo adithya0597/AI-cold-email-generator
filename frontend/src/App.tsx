@@ -36,9 +36,22 @@ import { useStealthStatus } from './services/privacy';
 // Initialise Sentry before the React tree renders.
 initSentry();
 
+/** Renders the stealth badge only when signed in (hook is called conditionally inside SignedIn). */
+function StealthBadge() {
+  const { data: stealthData } = useStealthStatus();
+  if (!stealthData?.stealth_enabled) return null;
+  return (
+    <span
+      data-testid="stealth-badge"
+      className="inline-flex items-center rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-green-400"
+    >
+      Stealth
+    </span>
+  );
+}
+
 function App() {
   const [healthStatus, setHealthStatus] = useState<{ status: string } | null>(null);
-  const { data: stealthData } = useStealthStatus();
 
   useEffect(() => {
     checkApiHealth();
@@ -192,14 +205,7 @@ function App() {
                   </span>
                 </div>
                 <SignedIn>
-                  {stealthData?.stealth_enabled && (
-                    <span
-                      data-testid="stealth-badge"
-                      className="inline-flex items-center rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-green-400"
-                    >
-                      Stealth
-                    </span>
-                  )}
+                  <StealthBadge />
                   <EmergencyBrake />
                   <UserButton afterSignOutUrl="/" />
                 </SignedIn>

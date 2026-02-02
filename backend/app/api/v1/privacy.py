@@ -9,10 +9,11 @@ Requires Career Insurance or Enterprise tier.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from enum import Enum
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth.clerk import get_current_user_id
 
@@ -21,6 +22,78 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/privacy", tags=["privacy"])
 
 ELIGIBLE_TIERS = {"career_insurance", "enterprise"}
+
+# ---------------------------------------------------------------------------
+# Table DDL — executed once per process via _ensure_tables()
+# ---------------------------------------------------------------------------
+
+_tables_ensured = False
+
+ENSURE_STEALTH_TABLE = (
+    "CREATE TABLE IF NOT EXISTS stealth_settings ("
+    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    "  user_id TEXT NOT NULL UNIQUE,"
+    "  stealth_enabled BOOLEAN NOT NULL DEFAULT FALSE,"
+    "  enabled_at TIMESTAMPTZ,"
+    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    ")"
+)
+
+ENSURE_BLOCKLIST_TABLE = (
+    "CREATE TABLE IF NOT EXISTS employer_blocklist ("
+    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    "  user_id TEXT NOT NULL,"
+    "  company_name TEXT NOT NULL,"
+    "  note TEXT,"
+    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+    "  UNIQUE(user_id, company_name)"
+    ")"
+)
+
+ENSURE_AUDIT_LOG_TABLE = (
+    "CREATE TABLE IF NOT EXISTS privacy_audit_log ("
+    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    "  user_id TEXT NOT NULL,"
+    "  company_name TEXT NOT NULL,"
+    "  action_type TEXT NOT NULL,"
+    "  details TEXT,"
+    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    ")"
+)
+
+ENSURE_PASSIVE_TABLE = (
+    "CREATE TABLE IF NOT EXISTS passive_mode_settings ("
+    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    "  user_id TEXT NOT NULL UNIQUE,"
+    "  search_frequency TEXT NOT NULL DEFAULT 'weekly',"
+    "  min_match_score INTEGER NOT NULL DEFAULT 70,"
+    "  notification_pref TEXT NOT NULL DEFAULT 'weekly_digest',"
+    "  auto_save_threshold INTEGER NOT NULL DEFAULT 85,"
+    "  mode TEXT NOT NULL DEFAULT 'passive',"
+    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+    "  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    ")"
+)
+
+
+async def _ensure_tables(session) -> None:
+    """Create all privacy-related tables if they don't exist. Runs once per process."""
+    global _tables_ensured
+    if _tables_ensured:
+        return
+    from sqlalchemy import text
+
+    await session.execute(text(ENSURE_STEALTH_TABLE))
+    await session.execute(text(ENSURE_BLOCKLIST_TABLE))
+    await session.execute(text(ENSURE_AUDIT_LOG_TABLE))
+    await session.execute(text(ENSURE_PASSIVE_TABLE))
+    await session.commit()
+    _tables_ensured = True
+
+
+# ---------------------------------------------------------------------------
+# Stealth Mode
+# ---------------------------------------------------------------------------
 
 
 class StealthStatusResponse(BaseModel):
@@ -43,17 +116,7 @@ async def get_stealth_status(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        # Ensure stealth_settings table exists
-        await session.execute(text(
-            "CREATE TABLE IF NOT EXISTS stealth_settings ("
-            "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-            "  user_id TEXT NOT NULL UNIQUE,"
-            "  stealth_enabled BOOLEAN NOT NULL DEFAULT FALSE,"
-            "  enabled_at TIMESTAMPTZ,"
-            "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-            ")"
-        ))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Get user tier
         result = await session.execute(
@@ -93,17 +156,7 @@ async def toggle_stealth(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        # Ensure stealth_settings table exists
-        await session.execute(text(
-            "CREATE TABLE IF NOT EXISTS stealth_settings ("
-            "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-            "  user_id TEXT NOT NULL UNIQUE,"
-            "  stealth_enabled BOOLEAN NOT NULL DEFAULT FALSE,"
-            "  enabled_at TIMESTAMPTZ,"
-            "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-            ")"
-        ))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Check tier eligibility
         result = await session.execute(
@@ -120,15 +173,14 @@ async def toggle_stealth(
                 detail="Stealth Mode requires Career Insurance or Enterprise tier.",
             )
 
-        # Upsert stealth setting
-        enabled_at_clause = "NOW()" if body.enabled else "NULL"
+        # Upsert stealth setting — use CASE to avoid string concatenation
         await session.execute(
             text(
                 "INSERT INTO stealth_settings (user_id, stealth_enabled, enabled_at) "
-                "VALUES (:uid, :enabled, " + ("NOW()" if body.enabled else "NULL") + ") "
+                "VALUES (:uid, :enabled, CASE WHEN :enabled THEN NOW() ELSE NULL END) "
                 "ON CONFLICT (user_id) DO UPDATE SET "
                 "stealth_enabled = :enabled, "
-                "enabled_at = " + ("NOW()" if body.enabled else "NULL")
+                "enabled_at = CASE WHEN :enabled THEN NOW() ELSE NULL END"
             ),
             {"uid": user_id, "enabled": body.enabled},
         )
@@ -163,17 +215,6 @@ class AddBlocklistRequest(BaseModel):
     note: Optional[str] = None
 
 
-ENSURE_BLOCKLIST_TABLE = (
-    "CREATE TABLE IF NOT EXISTS employer_blocklist ("
-    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-    "  user_id TEXT NOT NULL,"
-    "  company_name TEXT NOT NULL,"
-    "  note TEXT,"
-    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-    ")"
-)
-
-
 async def _check_stealth_enabled(session, user_id: str) -> bool:
     """Check if stealth mode is enabled for the user."""
     from sqlalchemy import text
@@ -196,8 +237,7 @@ async def get_blocklist(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_BLOCKLIST_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         result = await session.execute(
             text(
@@ -231,8 +271,7 @@ async def add_to_blocklist(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_BLOCKLIST_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         if not await _check_stealth_enabled(session, user_id):
             raise HTTPException(
@@ -264,14 +303,19 @@ async def remove_from_blocklist(
     entry_id: str,
     user_id: str = Depends(get_current_user_id),
 ):
-    """Remove a company from the employer blocklist."""
+    """Remove a company from the employer blocklist. Requires active Stealth Mode."""
     from sqlalchemy import text
 
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_BLOCKLIST_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
+
+        if not await _check_stealth_enabled(session, user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Stealth Mode must be enabled to manage the blocklist.",
+            )
 
         result = await session.execute(
             text(
@@ -291,17 +335,6 @@ async def remove_from_blocklist(
 # ============================================================
 # Privacy Proof Documentation
 # ============================================================
-
-ENSURE_AUDIT_LOG_TABLE = (
-    "CREATE TABLE IF NOT EXISTS privacy_audit_log ("
-    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-    "  user_id TEXT NOT NULL,"
-    "  company_name TEXT NOT NULL,"
-    "  action_type TEXT NOT NULL,"
-    "  details TEXT,"
-    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-    ")"
-)
 
 
 class AuditLogEntry(BaseModel):
@@ -337,9 +370,7 @@ async def get_privacy_proof(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_BLOCKLIST_TABLE))
-        await session.execute(text(ENSURE_AUDIT_LOG_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Get blocklist entries
         result = await session.execute(
@@ -406,9 +437,7 @@ async def download_privacy_report(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_BLOCKLIST_TABLE))
-        await session.execute(text(ENSURE_AUDIT_LOG_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         result = await session.execute(
             text(
@@ -447,7 +476,6 @@ async def download_privacy_report(
         return {
             "report_type": "privacy_proof",
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "user_id": user_id,
             "blocklisted_companies": blocklist,
             "blocked_actions_log": audit_log,
             "total_exposures": 0,
@@ -458,19 +486,8 @@ async def download_privacy_report(
 # Passive Mode Settings
 # ============================================================
 
-ENSURE_PASSIVE_TABLE = (
-    "CREATE TABLE IF NOT EXISTS passive_mode_settings ("
-    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-    "  user_id TEXT NOT NULL UNIQUE,"
-    "  search_frequency TEXT NOT NULL DEFAULT 'weekly',"
-    "  min_match_score INTEGER NOT NULL DEFAULT 70,"
-    "  notification_pref TEXT NOT NULL DEFAULT 'weekly_digest',"
-    "  auto_save_threshold INTEGER NOT NULL DEFAULT 85,"
-    "  mode TEXT NOT NULL DEFAULT 'passive',"
-    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
-    "  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-    ")"
-)
+VALID_FREQUENCIES = {"daily", "weekly"}
+VALID_NOTIFICATION_PREFS = {"weekly_digest", "immediate"}
 
 
 class PassiveModeResponse(BaseModel):
@@ -484,10 +501,10 @@ class PassiveModeResponse(BaseModel):
 
 
 class UpdatePassiveModeRequest(BaseModel):
-    search_frequency: Optional[str] = None
-    min_match_score: Optional[int] = None
-    notification_pref: Optional[str] = None
-    auto_save_threshold: Optional[int] = None
+    search_frequency: Optional[Literal["daily", "weekly"]] = None
+    min_match_score: Optional[int] = Field(None, ge=10, le=100)
+    notification_pref: Optional[Literal["weekly_digest", "immediate"]] = None
+    auto_save_threshold: Optional[int] = Field(None, ge=30, le=99)
 
 
 @router.get("/passive-mode", response_model=PassiveModeResponse)
@@ -500,8 +517,7 @@ async def get_passive_mode(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_PASSIVE_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Get tier
         result = await session.execute(
@@ -548,8 +564,7 @@ async def update_passive_mode(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_PASSIVE_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Check tier
         result = await session.execute(
@@ -616,8 +631,7 @@ async def activate_sprint_mode(
     from app.db.engine import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
-        await session.execute(text(ENSURE_PASSIVE_TABLE))
-        await session.commit()
+        await _ensure_tables(session)
 
         # Check tier
         result = await session.execute(

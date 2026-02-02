@@ -4,6 +4,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Pipeline from '../pages/Pipeline';
 import KanbanCard from '../components/pipeline/KanbanCard';
@@ -38,9 +39,11 @@ function createQueryClient() {
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(
-    <QueryClientProvider client={createQueryClient()}>
-      {ui}
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={createQueryClient()}>
+        {ui}
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 

@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.api.v1 import privacy as privacy_module
 from app.api.v1.privacy import router
 from app.auth.clerk import get_current_user_id
 
@@ -25,6 +26,14 @@ def _mock_session_cm():
     return mock_cm, mock_sess
 
 
+@pytest.fixture(autouse=True)
+def _reset_tables_flag():
+    """Reset the _tables_ensured flag before each test."""
+    privacy_module._tables_ensured = False
+    yield
+    privacy_module._tables_ensured = False
+
+
 # ---------------------------------------------------------------------------
 # Test: GET /privacy/stealth
 # ---------------------------------------------------------------------------
@@ -36,21 +45,21 @@ class TestGetStealthStatus:
         """GET /stealth returns stealth status for eligible user."""
         mock_cm, mock_sess = _mock_session_cm()
 
-        # First execute: CREATE TABLE (commit follows)
-        # Second execute: SELECT tier FROM users
         tier_row = MagicMock()
         tier_row.__getitem__ = lambda self, key: {"tier": "career_insurance"}[key]
         tier_result = MagicMock()
         tier_result.mappings.return_value.first.return_value = tier_row
 
-        # Third execute: SELECT stealth_enabled
         stealth_row = MagicMock()
         stealth_row.__getitem__ = lambda self, key: {"stealth_enabled": True}[key]
         stealth_result = MagicMock()
         stealth_result.mappings.return_value.first.return_value = stealth_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             stealth_result,
         ]
@@ -80,7 +89,10 @@ class TestGetStealthStatus:
         stealth_result.mappings.return_value.first.return_value = None
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,
             stealth_result,
         ]
@@ -114,7 +126,10 @@ class TestToggleStealth:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,  # SELECT tier
             MagicMock(),  # INSERT/UPSERT
         ]
@@ -143,7 +158,10 @@ class TestToggleStealth:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,  # SELECT tier
         ]
 
@@ -169,7 +187,10 @@ class TestToggleStealth:
         tier_result.mappings.return_value.first.return_value = tier_row
 
         mock_sess.execute.side_effect = [
-            MagicMock(),  # CREATE TABLE
+            MagicMock(),  # CREATE TABLE stealth_settings
+            MagicMock(),  # CREATE TABLE employer_blocklist
+            MagicMock(),  # CREATE TABLE privacy_audit_log
+            MagicMock(),  # CREATE TABLE passive_mode_settings
             tier_result,  # SELECT tier
             MagicMock(),  # INSERT/UPSERT
         ]
