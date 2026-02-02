@@ -751,21 +751,33 @@ def detect_at_risk_employees(self) -> Dict[str, Any]:
         try:
             service = AtRiskDetectionService()
             results = []
+            errors = []
 
             async with AsyncSessionLocal() as session:
                 orgs_result = await session.execute(select(Organization.id))
                 org_ids = [str(row[0]) for row in orgs_result.all()]
 
-                for org_id in org_ids:
-                    result = await service.update_engagement_statuses(
-                        session=session,
-                        org_id=org_id,
+            # Process each org in its own session to isolate failures
+            for org_id in org_ids:
+                try:
+                    async with AsyncSessionLocal() as session:
+                        result = await service.update_engagement_statuses(
+                            session=session,
+                            org_id=org_id,
+                        )
+                        results.append(result)
+                except Exception as org_exc:
+                    logger.warning(
+                        "detect_at_risk_employees: failed for org %s: %s",
+                        org_id, org_exc,
                     )
-                    results.append(result)
+                    errors.append({"org_id": org_id, "error": str(org_exc)})
 
             summary = {
                 "organizations_processed": len(results),
+                "organizations_failed": len(errors),
                 "results": results,
+                "errors": errors,
             }
             trace.update(output=summary)
             logger.info("detect_at_risk_employees completed: %s", summary)
@@ -807,6 +819,7 @@ def bulk_onboard_employees(self, org_id: str, valid_rows: list) -> Dict[str, Any
 
     async def _execute():
         from app.db.engine import AsyncSessionLocal
+        from app.services.enterprise.invitation import InvitationService
 
         logger.info(
             "bulk_onboard_employees: processing %d rows for org %s",
@@ -814,22 +827,37 @@ def bulk_onboard_employees(self, org_id: str, valid_rows: list) -> Dict[str, Any
             org_id,
         )
 
+        service = InvitationService()
         processed = 0
+        errors = []
+
         async with AsyncSessionLocal() as session:
-            async with session.begin():
-                for row in valid_rows:
-                    # Placeholder: will delegate to InvitationService (story 10-3)
-                    logger.info(
-                        "bulk_onboard_employees: queued invitation for %s",
-                        row.get("email"),
-                    )
+            for row in valid_rows:
+                email = row.get("email", "")
+                try:
+                    async with session.begin():
+                        await service.create_invitation(
+                            session=session,
+                            org_id=org_id,
+                            email=email,
+                            invited_by=row.get("invited_by", org_id),
+                            first_name=row.get("first_name"),
+                            last_name=row.get("last_name"),
+                        )
                     processed += 1
+                except Exception as exc:
+                    logger.warning(
+                        "bulk_onboard_employees: failed for %s: %s", email, exc
+                    )
+                    errors.append({"email": email, "error": str(exc)})
 
         return {
             "status": "completed",
             "org_id": org_id,
             "processed": processed,
+            "failed": len(errors),
             "total": len(valid_rows),
+            "errors": errors,
         }
 
     try:

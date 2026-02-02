@@ -207,15 +207,15 @@ development_status:
   # ═══════════════════════════════════════════
   # Epic 10: Enterprise Administration (10 stories)
   # ═══════════════════════════════════════════
-  epic-10: in-progress
-  10-1-enterprise-admin-role-and-permissions: review
-  10-2-bulk-employee-onboarding-via-csv: review
-  10-3-employee-invitation-flow: review
-  10-4-aggregate-metrics-dashboard: review
-  10-5-per-employee-autonomy-configuration: review
-  10-6-at-risk-employee-alerts: review
-  10-7-roi-reporting: review
-  10-8-pii-detection-alerts: review
-  10-9-enterprise-billing-management: review
-  10-10-enterprise-empty-state: review
+  epic-10: done
+  10-1-enterprise-admin-role-and-permissions: done
+  10-2-bulk-employee-onboarding-via-csv: done
+  10-3-employee-invitation-flow: done
+  10-4-aggregate-metrics-dashboard: done
+  10-5-per-employee-autonomy-configuration: done
+  10-6-at-risk-employee-alerts: done
+  10-7-roi-reporting: done
+  10-8-pii-detection-alerts: done
+  10-9-enterprise-billing-management: done
+  10-10-enterprise-empty-state: done
   epic-10-retrospective: optional

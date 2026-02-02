@@ -155,8 +155,6 @@ async def bulk_upload_employees(
     try:
         rows = service.parse_csv(content)
     except ValueError as exc:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=400, detail=str(exc))
 
     async with AsyncSessionLocal() as session:
@@ -235,37 +233,42 @@ async def invite_employee(
                 first_name=body.first_name,
                 last_name=body.last_name,
             )
+            # Capture values before session closes
+            inv_id = invitation.id
+            inv_email = invitation.email
+            inv_status = invitation.status.value
+            inv_created_at = invitation.created_at
+            inv_expires_at = invitation.expires_at
+            inv_token = str(invitation.token)
 
-            # Build accept/decline URLs
-            base_url = getattr(settings, "FRONTEND_URL", "https://app.jobpilot.ai")
-            token = str(invitation.token)
-            accept_url = f"{base_url}/invitations/{token}/accept"
-            decline_url = f"{base_url}/invitations/{token}/decline"
+    # Send invitation email OUTSIDE the DB transaction
+    base_url = getattr(settings, "FRONTEND_URL", "https://app.jobpilot.ai")
+    accept_url = f"{base_url}/invitations/{inv_token}/accept"
+    decline_url = f"{base_url}/invitations/{inv_token}/decline"
 
-            # Send invitation email (fire-and-forget, don't block on failure)
-            try:
-                await send_invitation_email(
-                    to=str(body.email),
-                    admin_name=admin_ctx.org_name,  # Use org name as admin display
-                    company_name=admin_ctx.org_name,
-                    accept_url=accept_url,
-                    decline_url=decline_url,
-                    recipient_first_name=body.first_name,
-                )
-            except Exception:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "Failed to send invitation email to %s, invitation still created",
-                    body.email,
-                )
+    try:
+        await send_invitation_email(
+            to=str(body.email),
+            admin_name=admin_ctx.org_name,
+            company_name=admin_ctx.org_name,
+            accept_url=accept_url,
+            decline_url=decline_url,
+            recipient_first_name=body.first_name,
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to send invitation email to %s, invitation still created",
+            body.email,
+        )
 
-            return InvitationResponse(
-                id=invitation.id,
-                email=invitation.email,
-                status=invitation.status.value,
-                created_at=invitation.created_at,
-                expires_at=invitation.expires_at,
-            )
+    return InvitationResponse(
+        id=inv_id,
+        email=inv_email,
+        status=inv_status,
+        created_at=inv_created_at,
+        expires_at=inv_expires_at,
+    )
 
 
 @router.get("/metrics", response_model=MetricsResponse)
@@ -293,15 +296,17 @@ async def get_metrics(
     service = EnterpriseMetricsService()
 
     async with AsyncSessionLocal() as session:
-        async with session.begin():
-            summary = await service.get_aggregate_metrics(
-                session, admin_ctx.org_id, effective_start, effective_end
-            )
-            daily = await service.get_daily_breakdown(
-                session, admin_ctx.org_id, effective_start, effective_end
-            )
+        # Read-only queries — no transaction needed
+        summary = await service.get_aggregate_metrics(
+            session, admin_ctx.org_id, effective_start, effective_end
+        )
+        daily = await service.get_daily_breakdown(
+            session, admin_ctx.org_id, effective_start, effective_end
+        )
 
-            action = "export_metrics" if export_format == "csv" else "view_metrics"
+        # Audit log write in its own transaction
+        action = "export_metrics" if export_format == "csv" else "view_metrics"
+        async with session.begin():
             await log_audit_event(
                 session=session,
                 org_id=admin_ctx.org_id,
@@ -468,7 +473,7 @@ async def update_autonomy_config(
 @router.put("/users/{user_id}/autonomy", response_model=None)
 async def set_user_autonomy(
     user_id: UUID,
-    body: "EmployeeAutonomyBody",
+    body: EmployeeAutonomyBody,
     admin_ctx: AdminContext = Depends(require_admin),
 ):
     """Set per-employee autonomy override.
@@ -540,7 +545,7 @@ async def get_restrictions(
 
 @router.put("/autonomy-config/restrictions", response_model=None)
 async def update_restrictions(
-    body: "RestrictionsBody",
+    body: RestrictionsBody,
     admin_ctx: AdminContext = Depends(require_admin),
 ):
     """Update organization restrictions (blocked companies, industries, approval rules).

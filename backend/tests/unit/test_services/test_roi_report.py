@@ -14,7 +14,7 @@ Tests verify:
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -296,8 +296,8 @@ class TestDateRangeDefaults:
             end_date=date(2026, 1, 31),
         )
 
-        assert captured_dates["start"] == datetime(2026, 1, 1, 0, 0, 0)
-        assert captured_dates["end"] == datetime(2026, 1, 31, 23, 59, 59)
+        assert captured_dates["start"] == datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert captured_dates["end"] == datetime(2026, 1, 31, 23, 59, 59, tzinfo=timezone.utc)
         assert result["period"]["start_date"] == "2026-01-01"
         assert result["period"]["end_date"] == "2026-01-31"
 

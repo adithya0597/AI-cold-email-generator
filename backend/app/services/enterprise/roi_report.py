@@ -9,7 +9,7 @@ Privacy invariant: no method returns individual user data.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -55,8 +55,8 @@ class ROIReportService:
         if end_date is None:
             end_date = today
 
-        start_dt = datetime(start_date.year, start_date.month, start_date.day)
-        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59)
+        start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
         org_uuid = UUID(org_id) if isinstance(org_id, str) else org_id
 
         cost_per_placement = await self._compute_cost_per_placement(

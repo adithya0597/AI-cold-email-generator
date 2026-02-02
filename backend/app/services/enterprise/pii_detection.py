@@ -252,9 +252,15 @@ class PIIDetectionService:
         """
         hashed_uid = self.hash_user_id(user_id)
 
+        # PRIVACY NOTE: The AgentActivity.user_id FK stores the real user_id
+        # because the model requires a valid FK to the users table. Admin-facing
+        # API endpoints (GET /pii-alerts) MUST only expose data.hashed_user_id
+        # and NEVER join back to the users table. The real user_id column should
+        # be treated as an internal implementation detail, not exposed in any
+        # admin-facing response. See admin_enterprise.py get_pii_alerts().
         activity = AgentActivity(
             id=uuid4(),
-            user_id=user_id,  # FK required by model, but metadata is anonymized
+            user_id=user_id,
             event_type="pii_detected",
             agent_type="pii_detection",
             title="PII detected in generated content",
@@ -264,7 +270,6 @@ class PIIDetectionService:
                 "org_id": org_id,
                 "categories": categories,
                 "detection_count": detection_count,
-                # NOTE: No matched_term, no actual text, no user name
             },
         )
         session.add(activity)
