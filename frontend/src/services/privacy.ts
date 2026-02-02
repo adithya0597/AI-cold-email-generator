@@ -13,9 +13,22 @@ export interface StealthStatus {
   eligible: boolean;
 }
 
+export interface BlocklistEntry {
+  id: string;
+  company_name: string;
+  note: string | null;
+  created_at: string | null;
+}
+
+export interface BlocklistResponse {
+  entries: BlocklistEntry[];
+  total: number;
+}
+
 const privacyKeys = {
   all: ['privacy'] as const,
   stealth: () => [...privacyKeys.all, 'stealth'] as const,
+  blocklist: () => [...privacyKeys.all, 'blocklist'] as const,
 };
 
 export function useStealthStatus() {
@@ -39,6 +52,44 @@ export function useToggleStealth() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: privacyKeys.stealth() });
+    },
+  });
+}
+
+export function useBlocklist() {
+  const api = useApiClient();
+  return useQuery({
+    queryKey: privacyKeys.blocklist(),
+    queryFn: async (): Promise<BlocklistResponse> => {
+      const res = await api.get('/api/v1/privacy/blocklist');
+      return res.data;
+    },
+  });
+}
+
+export function useAddToBlocklist() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ company_name, note }: { company_name: string; note?: string }) => {
+      const res = await api.post('/api/v1/privacy/blocklist', { company_name, note });
+      return res.data as BlocklistEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: privacyKeys.blocklist() });
+    },
+  });
+}
+
+export function useRemoveFromBlocklist() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ entryId }: { entryId: string }) => {
+      await api.delete(`/api/v1/privacy/blocklist/${entryId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: privacyKeys.blocklist() });
     },
   });
 }
