@@ -43,9 +43,9 @@ So that **I can manage my organization's workforce deployment without accessing 
   - [x] 4.4 Raise `HTTPException(403)` if user is not an admin of any organization
   - [x] 4.5 Set RLS variable `SET LOCAL app.current_org_id` alongside existing `app.current_user_id`
 
-- [ ] Task 5: Migrate existing admin routes to RBAC (AC: #7)
-  - [ ] 5.1 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/llm-costs` endpoint
-  - [ ] 5.2 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/dlq` endpoint
+- [x] Task 5: Migrate existing admin routes to RBAC (AC: #7)
+  - [x] 5.1 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/llm-costs` endpoint
+  - [x] 5.2 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/dlq` endpoint
   - [ ] 5.3 Ensure backward compatibility: if no org exists yet, existing endpoints still function for superadmin-type users
 
 - [ ] Task 6: Write tests (AC: #1-#7)
