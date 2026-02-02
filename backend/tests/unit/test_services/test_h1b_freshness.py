@@ -95,8 +95,10 @@ def _mock_session_cm():
 @pytest.fixture(autouse=True)
 def _reset_tables_flag():
     h1b_service._tables_ensured = False
+    h1b_service._tables_lock = None
     yield
     h1b_service._tables_ensured = False
+    h1b_service._tables_lock = None
 
 
 class TestSponsorEndpointStaleWarning:

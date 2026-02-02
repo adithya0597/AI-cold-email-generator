@@ -27,12 +27,16 @@ export function H1BEmptyState({ company }: H1BEmptyStateProps) {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
         <button
-          className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+          disabled
+          title="Coming soon"
+          className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-600 opacity-60 cursor-not-allowed"
         >
           Notify me when data becomes available
         </button>
         <button
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          disabled
+          title="Coming soon"
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 opacity-60 cursor-not-allowed"
         >
           Share anonymous tip
         </button>

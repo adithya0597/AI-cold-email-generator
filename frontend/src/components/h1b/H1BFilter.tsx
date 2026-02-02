@@ -23,6 +23,7 @@ interface H1BFilterProps {
 
 export function H1BFilter({ onFilterChange }: H1BFilterProps) {
   const [selected, setSelected] = useState<H1BFilterValue>(() => {
+    if (typeof window === 'undefined') return 'all';
     const stored = localStorage.getItem(H1B_FILTER_KEY);
     if (stored && FILTER_OPTIONS.some((o) => o.value === stored)) {
       return stored as H1BFilterValue;

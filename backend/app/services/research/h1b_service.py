@@ -7,6 +7,7 @@ database upsert for the canonical h1b_sponsors table.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
@@ -22,6 +23,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _tables_ensured = False
+_tables_lock: asyncio.Lock | None = None
+
+
+def _get_tables_lock() -> asyncio.Lock:
+    """Lazy-create an asyncio.Lock (must be created within an event loop)."""
+    global _tables_lock
+    if _tables_lock is None:
+        _tables_lock = asyncio.Lock()
+    return _tables_lock
 
 _DDL_H1B_SPONSORS = text("""
     CREATE TABLE IF NOT EXISTS h1b_sponsors (
@@ -61,16 +71,23 @@ _DDL_INDEXES = [
 
 
 async def _ensure_tables(session) -> None:
-    """Create H1B tables if they don't exist (once per process)."""
+    """Create H1B tables if they don't exist (once per process).
+
+    NOTE: In production, prefer Supabase migrations (supabase/migrations/)
+    over runtime DDL. This is a safety net for dev/test environments.
+    """
     global _tables_ensured
     if _tables_ensured:
         return
-    await session.execute(_DDL_H1B_SPONSORS)
-    await session.execute(_DDL_H1B_SOURCE_RECORDS)
-    for idx in _DDL_INDEXES:
-        await session.execute(idx)
-    await session.commit()
-    _tables_ensured = True
+    async with _get_tables_lock():
+        if _tables_ensured:
+            return
+        await session.execute(_DDL_H1B_SPONSORS)
+        await session.execute(_DDL_H1B_SOURCE_RECORDS)
+        for idx in _DDL_INDEXES:
+            await session.execute(idx)
+        await session.commit()
+        _tables_ensured = True
 
 
 # ---------------------------------------------------------------------------

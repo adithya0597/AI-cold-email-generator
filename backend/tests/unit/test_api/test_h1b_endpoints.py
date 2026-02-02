@@ -31,8 +31,10 @@ def _mock_session_cm():
 def _reset_tables_flag():
     """Reset the _tables_ensured flag before each test."""
     h1b_service._tables_ensured = False
+    h1b_service._tables_lock = None
     yield
     h1b_service._tables_ensured = False
+    h1b_service._tables_lock = None
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +165,27 @@ class TestGetSponsor:
                 resp = await client.get("/api/v1/h1b/sponsors/Google")
 
         assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_returns_401_for_missing_user(self):
+        """GET /sponsors/{company} returns 401 when user not found in DB."""
+        mock_cm, mock_sess = _mock_session_cm()
+
+        no_user_result = MagicMock()
+        no_user_result.mappings.return_value.first.return_value = None
+
+        mock_sess.execute.side_effect = [
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(),  # DDL
+            no_user_result,
+        ]
+
+        with patch("app.db.engine.AsyncSessionLocal", return_value=mock_cm):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get("/api/v1/h1b/sponsors/Google")
+
+        assert resp.status_code == 401
+        assert "not found" in resp.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

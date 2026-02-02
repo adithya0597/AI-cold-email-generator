@@ -12,6 +12,7 @@ import csv
 import logging
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -98,13 +99,21 @@ def get_employer_stats(records: List[Dict[str, str]], company_name: str) -> Opti
     return stats if found else None
 
 
+@lru_cache(maxsize=4)
+def _cached_parse_employer(csv_path: str, mtime: float) -> List[Dict[str, str]]:
+    """Parse USCIS CSV, cached by file path + modification time."""
+    return parse_employer_data(Path(csv_path))
+
+
 class USCISClient:
     """Client for downloading and parsing USCIS H1B employer data."""
 
     def __init__(self, cache_dir: Optional[Path] = None):
+        import os
         import tempfile
 
-        self._cache_dir = cache_dir or Path(tempfile.gettempdir()) / "jobpilot_uscis_cache"
+        pid = os.getpid()
+        self._cache_dir = cache_dir or Path(tempfile.gettempdir()) / f"jobpilot_uscis_cache_{pid}"
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._max_retries = 3
         self._backoff_base = 1
@@ -163,7 +172,10 @@ class USCISClient:
         raise last_error or RuntimeError("USCIS download failed after retries")
 
     async def fetch_employer_stats(self, company_name: str, fiscal_year: int = 2024) -> Optional[EmployerStats]:
-        """Fetch stats for a specific employer from USCIS data."""
+        """Fetch stats for a specific employer from USCIS data.
+
+        Uses LRU-cached parse so repeated queries don't re-parse the CSV.
+        """
         path = await self.download_employer_data(fiscal_year)
-        records = parse_employer_data(path)
+        records = _cached_parse_employer(str(path), path.stat().st_mtime)
         return get_employer_stats(records, company_name)

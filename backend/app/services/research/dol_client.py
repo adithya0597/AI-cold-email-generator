@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -134,13 +136,23 @@ def calculate_trend(current: int, previous: int) -> str:
     return "stable"
 
 
+@lru_cache(maxsize=4)
+def _cached_parse_and_aggregate(csv_path: str, mtime: float) -> Dict[str, CompanyStats]:
+    """Parse and aggregate DOL CSV, cached by file path + modification time."""
+    records = parse_disclosure_csv(Path(csv_path))
+    return aggregate_by_company(records)
+
+
 class DOLDisclosureClient:
     """Client for downloading and parsing DOL H1B disclosure data."""
 
     def __init__(self, cache_dir: Optional[Path] = None):
+        import os
         import tempfile
 
-        self._cache_dir = cache_dir or Path(tempfile.gettempdir()) / "jobpilot_dol_cache"
+        # Use a process-specific subdirectory to prevent cache poisoning
+        pid = os.getpid()
+        self._cache_dir = cache_dir or Path(tempfile.gettempdir()) / f"jobpilot_dol_cache_{pid}"
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._max_retries = 3
         self._backoff_base = 1  # seconds
@@ -201,10 +213,13 @@ class DOLDisclosureClient:
         raise last_error or RuntimeError("DOL download failed after retries")
 
     async def fetch_company_stats(self, company_name: str, fiscal_year: int = 2024) -> Optional[CompanyStats]:
-        """Fetch stats for a specific company from DOL data."""
+        """Fetch stats for a specific company from DOL data.
+
+        Uses LRU-cached parse/aggregate so repeated queries don't re-parse
+        the multi-million-row CSV.
+        """
         path = await self.download_disclosure_file(fiscal_year)
-        records = parse_disclosure_csv(path)
-        companies = aggregate_by_company(records)
+        companies = _cached_parse_and_aggregate(str(path), path.stat().st_mtime)
 
         normalized = normalize_company_name(company_name)
         return companies.get(normalized)

@@ -106,7 +106,7 @@ export function SponsorScorecard({ company }: SponsorScorecardProps) {
         <div>
           <dt className="text-gray-500">Approval Rate</dt>
           <dd data-testid="approval-rate" className="text-lg font-semibold text-gray-900">
-            {approvalPct}%
+            {approvalPct !== 'N/A' ? `${approvalPct}%` : 'N/A'}
           </dd>
         </div>
         <div>

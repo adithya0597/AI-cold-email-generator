@@ -17,8 +17,6 @@ from app.services.research.h1b_service import normalize_company_name
 
 logger = logging.getLogger(__name__)
 
-_HOURS_PER_YEAR = 2080
-
 
 @dataclass
 class CompanyDetails:

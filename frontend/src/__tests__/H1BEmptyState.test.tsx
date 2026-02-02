@@ -17,15 +17,19 @@ describe('H1BEmptyState', () => {
     expect(screen.getByText(/ask during the interview/i)).toBeInTheDocument();
   });
 
-  it('renders notify me button', () => {
+  it('renders notify me button as disabled', () => {
     render(<H1BEmptyState company="Acme Corp" />);
 
-    expect(screen.getByRole('button', { name: /notify me/i })).toBeInTheDocument();
+    const btn = screen.getByRole('button', { name: /notify me/i });
+    expect(btn).toBeInTheDocument();
+    expect(btn).toBeDisabled();
   });
 
-  it('renders share tip button', () => {
+  it('renders share tip button as disabled', () => {
     render(<H1BEmptyState company="Acme Corp" />);
 
-    expect(screen.getByRole('button', { name: /share anonymous tip/i })).toBeInTheDocument();
+    const btn = screen.getByRole('button', { name: /share anonymous tip/i });
+    expect(btn).toBeInTheDocument();
+    expect(btn).toBeDisabled();
   });
 });

@@ -27,7 +27,9 @@ async def _check_h1b_tier(session, user_id: str) -> str:
         {"user_id": user_id},
     )
     row = result.mappings().first()
-    tier = row["tier"] if row else "free"
+    if not row:
+        raise HTTPException(status_code=401, detail="User not found.")
+    tier = row["tier"]
 
     if tier not in ELIGIBLE_TIERS:
         raise HTTPException(
@@ -71,33 +73,38 @@ async def get_sponsor(
         )
         row = result.mappings().first()
 
-    if not row:
-        raise HTTPException(status_code=404, detail=f"No H1B data found for '{company}'")
+        if not row:
+            raise HTTPException(status_code=404, detail=f"No H1B data found for '{company}'")
 
-    from app.services.research.h1b_service import get_stale_warning
+        from app.services.research.h1b_service import get_stale_warning
 
-    updated_at = row["updated_at"]
-    stale = get_stale_warning(updated_at)
+        updated_at = row["updated_at"]
+        stale = get_stale_warning(updated_at)
 
-    response = {
-        "company_name": row["company_name"],
-        "company_name_normalized": row["company_name_normalized"],
-        "domain": row["domain"],
-        "total_petitions": row["total_petitions"],
-        "approval_rate": row["approval_rate"],
-        "avg_wage": row["avg_wage"],
-        "wage_source": row["wage_source"],
-        "freshness": {
-            "h1bgrader": str(row["last_updated_h1bgrader"]) if row["last_updated_h1bgrader"] else None,
-            "myvisajobs": str(row["last_updated_myvisajobs"]) if row["last_updated_myvisajobs"] else None,
-            "uscis": str(row["last_updated_uscis"]) if row["last_updated_uscis"] else None,
-        },
-        "updated_at": str(updated_at) if updated_at else None,
-    }
+        def _fmt_dt(val):
+            if val is None:
+                return None
+            return val.isoformat() if hasattr(val, "isoformat") else str(val)
 
-    if stale:
-        response["stale_warning"] = stale["stale_warning"]
-        response["stale_message"] = stale["message"]
+        response = {
+            "company_name": row["company_name"],
+            "company_name_normalized": row["company_name_normalized"],
+            "domain": row["domain"],
+            "total_petitions": row["total_petitions"],
+            "approval_rate": row["approval_rate"],
+            "avg_wage": row["avg_wage"],
+            "wage_source": row["wage_source"],
+            "freshness": {
+                "h1bgrader": _fmt_dt(row["last_updated_h1bgrader"]),
+                "myvisajobs": _fmt_dt(row["last_updated_myvisajobs"]),
+                "uscis": _fmt_dt(row["last_updated_uscis"]),
+            },
+            "updated_at": _fmt_dt(updated_at),
+        }
+
+        if stale:
+            response["stale_warning"] = stale["stale_warning"]
+            response["stale_message"] = stale["message"]
 
     return response
 
@@ -115,16 +122,19 @@ async def search_sponsors(
         await _ensure_h1b_tables(session)
         await _check_h1b_tier(session, user_id)
 
+        # Escape ILIKE metacharacters to prevent wildcard injection
+        escaped_q = q.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
         result = await session.execute(
             text("""
                 SELECT company_name, company_name_normalized, domain,
                        total_petitions, approval_rate, avg_wage, wage_source
                 FROM h1b_sponsors
-                WHERE company_name_normalized ILIKE :query
+                WHERE company_name_normalized ILIKE :query ESCAPE '\\'
                 ORDER BY total_petitions DESC NULLS LAST
                 LIMIT :limit
             """),
-            {"query": f"%{q.lower()}%", "limit": limit},
+            {"query": f"%{escaped_q}%", "limit": limit},
         )
         rows = result.mappings().all()
 

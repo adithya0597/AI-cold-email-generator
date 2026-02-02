@@ -20,8 +20,8 @@ function getTrend(data: YearlyData[]): 'improving' | 'declining' | 'stable' {
   const first = data[0].approvalRate;
   const last = data[data.length - 1].approvalRate;
   const change = last - first;
-  if (change > 0.05) return 'improving';
-  if (change < -0.05) return 'declining';
+  if (change > 0.10) return 'improving';
+  if (change < -0.10) return 'declining';
   return 'stable';
 }
 
@@ -78,7 +78,7 @@ export function ApprovalRateChart({ data }: ApprovalRateChartProps) {
               <div className="h-5 w-full rounded-full bg-gray-100">
                 <div
                   className={`h-5 rounded-full ${barColor(entry.approvalRate)} flex items-center justify-end pr-2`}
-                  style={{ width: `${Math.round(entry.approvalRate * 100)}%` }}
+                  style={{ width: `${Math.max(8, Math.round(entry.approvalRate * 100))}%` }}
                 >
                   <span className="text-xs font-medium text-white">
                     {Math.round(entry.approvalRate * 100)}%
