@@ -36,12 +36,12 @@ So that **I can manage my organization's workforce deployment without accessing 
   - [x] 3.3 Add RLS policies: `organization_members` scoped by org_id, admin sees all org members, member sees only self; `audit_logs` readable only by org admins
   - [x] 3.4 Add RLS policy preventing admin from accessing `user_applications`, `user_pipelines`, or similar individual-level tables via org membership
 
-- [ ] Task 4: Create require_admin dependency (AC: #2, #3)
-  - [ ] 4.1 Create `backend/app/auth/admin.py` with `require_admin` FastAPI dependency
-  - [ ] 4.2 `require_admin` calls `get_current_user_id()` to get user, then queries `OrganizationMember` for user where `role = "admin"`
-  - [ ] 4.3 Return a dataclass/NamedTuple `AdminContext(user_id, org_id, org_name)` on success
-  - [ ] 4.4 Raise `HTTPException(403)` if user is not an admin of any organization
-  - [ ] 4.5 Set RLS variable `SET LOCAL app.current_org_id` alongside existing `app.current_user_id`
+- [x] Task 4: Create require_admin dependency (AC: #2, #3)
+  - [x] 4.1 Create `backend/app/auth/admin.py` with `require_admin` FastAPI dependency
+  - [x] 4.2 `require_admin` calls `get_current_user_id()` to get user, then queries `OrganizationMember` for user where `role = "admin"`
+  - [x] 4.3 Return a dataclass/NamedTuple `AdminContext(user_id, org_id, org_name)` on success
+  - [x] 4.4 Raise `HTTPException(403)` if user is not an admin of any organization
+  - [x] 4.5 Set RLS variable `SET LOCAL app.current_org_id` alongside existing `app.current_user_id`
 
 - [ ] Task 5: Migrate existing admin routes to RBAC (AC: #7)
   - [ ] 5.1 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/llm-costs` endpoint

@@ -48,3 +48,25 @@ async def set_rls_context(session: AsyncSession, user_id: str) -> None:
     UUID(user_id)
 
     await session.execute(text(f"SET LOCAL app.current_user_id = '{user_id}'"))
+
+
+async def set_org_rls_context(session: AsyncSession, org_id: str) -> None:
+    """Set the current organization ID for RLS policies via SET LOCAL.
+
+    The SET LOCAL statement scopes the setting to the current transaction,
+    so it is automatically cleared when the transaction commits or rolls back.
+
+    Args:
+        session: An active SQLAlchemy async session (must be within a transaction).
+        org_id: The organization's UUID as a string. Validated before use.
+
+    Raises:
+        ValueError: If org_id is not a valid UUID string.
+    """
+    if not isinstance(org_id, str) or not _UUID_PATTERN.match(org_id):
+        raise ValueError(f"Invalid org_id: must be a valid UUID string, got {org_id!r}")
+
+    # Double-check by parsing with stdlib UUID
+    UUID(org_id)
+
+    await session.execute(text(f"SET LOCAL app.current_org_id = '{org_id}'"))
