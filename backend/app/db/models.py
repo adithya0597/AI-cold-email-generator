@@ -22,6 +22,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -262,6 +263,41 @@ class OrganizationMember(TimestampMixin, Base):
     # Relationships
     organization = relationship("Organization", back_populates="members")
     user = relationship("User", backref="org_memberships")
+
+
+class AuditLog(Base):
+    """Immutable audit log for enterprise admin actions.
+
+    No TimestampMixin or SoftDeleteMixin — audit records are append-only
+    and use only created_at (server-side default).
+    """
+
+    __tablename__ = "audit_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    org_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    actor_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    action = Column(String, nullable=False)
+    resource_type = Column(String, nullable=False)
+    resource_id = Column(UUID(as_uuid=True), nullable=True)
+    changes = Column(JSONB, server_default="{}")
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
+
+    # Relationships
+    organization = relationship("Organization")
+    actor = relationship("User")
 
 
 class Profile(SoftDeleteMixin, TimestampMixin, Base):

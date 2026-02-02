@@ -26,9 +26,9 @@ So that **I can manage my organization's workforce deployment without accessing 
   - [x] 1.3 Add `OrgRole` enum to `backend/app/db/models.py` with values `ADMIN = "admin"`, `MEMBER = "member"`
   - [x] 1.4 Add `org_id` nullable FK field to the `User` model for quick org lookup (denormalized from OrganizationMember for convenience)
 
-- [ ] Task 2: Create AuditLog model (AC: #4)
-  - [ ] 2.1 Add `AuditLog` model to `backend/app/db/models.py` with fields: `id` (UUID, PK), `org_id` (FK to Organization), `actor_id` (FK to User), `action` (String, not null — e.g., "invite_employee", "update_autonomy"), `resource_type` (String — e.g., "organization_member", "invitation"), `resource_id` (UUID, nullable), `changes` (JSONB, default `{}`), `created_at` (DateTime, server_default=now)
-  - [ ] 2.2 Create `log_audit_event()` async helper function in `backend/app/services/enterprise/audit.py` that accepts session, org_id, actor_id, action, resource_type, resource_id, changes and inserts an AuditLog record
+- [x] Task 2: Create AuditLog model (AC: #4)
+  - [x] 2.1 Add `AuditLog` model to `backend/app/db/models.py` with fields: `id` (UUID, PK), `org_id` (FK to Organization), `actor_id` (FK to User), `action` (String, not null — e.g., "invite_employee", "update_autonomy"), `resource_type` (String — e.g., "organization_member", "invitation"), `resource_id` (UUID, nullable), `changes` (JSONB, default `{}`), `created_at` (DateTime, server_default=now)
+  - [x] 2.2 Create `log_audit_event()` async helper function in `backend/app/services/enterprise/audit.py` that accepts session, org_id, actor_id, action, resource_type, resource_id, changes and inserts an AuditLog record
 
 - [x] Task 3: Create database migration (AC: #1, #4, #5)
   - [x] 3.1 Create migration file `supabase/migrations/00002_enterprise_admin.sql` with CREATE TABLE for `organizations`, `organization_members`, `audit_logs`
