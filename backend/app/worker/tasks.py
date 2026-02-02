@@ -573,6 +573,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.worker.tasks.h1b_refresh_pipeline",
         "schedule": 7 * 24 * 60 * 60,  # Weekly (in seconds)
     },
+    "detect-at-risk-employees": {
+        "task": "app.worker.tasks.detect_at_risk_employees",
+        "schedule": 24 * 60 * 60,  # Daily (in seconds)
+    },
 }
 
 
@@ -709,3 +713,129 @@ def health_check_task() -> Dict[str, str]:
         "status": "ok",
         "worker_time": datetime.now(timezone.utc).isoformat(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Enterprise tasks (default queue)
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.detect_at_risk_employees",
+    queue="default",
+    max_retries=2,
+    default_retry_delay=300,
+)
+def detect_at_risk_employees(self) -> Dict[str, Any]:
+    """Run daily at-risk employee detection for all organizations.
+
+    Iterates all organizations and evaluates member engagement status
+    using AtRiskDetectionService.update_engagement_statuses().
+    """
+    logger.info("detect_at_risk_employees started")
+
+    async def _execute():
+        from sqlalchemy import select
+
+        from app.db.engine import AsyncSessionLocal
+        from app.db.models import Organization
+        from app.observability.langfuse_client import create_agent_trace, flush_traces
+        from app.services.enterprise.at_risk import AtRiskDetectionService
+
+        trace = create_agent_trace(
+            user_id="system",
+            agent_type="at_risk_detection",
+            celery_task_id=self.request.id,
+        )
+        try:
+            service = AtRiskDetectionService()
+            results = []
+
+            async with AsyncSessionLocal() as session:
+                orgs_result = await session.execute(select(Organization.id))
+                org_ids = [str(row[0]) for row in orgs_result.all()]
+
+                for org_id in org_ids:
+                    result = await service.update_engagement_statuses(
+                        session=session,
+                        org_id=org_id,
+                    )
+                    results.append(result)
+
+            summary = {
+                "organizations_processed": len(results),
+                "results": results,
+            }
+            trace.update(output=summary)
+            logger.info("detect_at_risk_employees completed: %s", summary)
+            return summary
+        except Exception as exc:
+            trace.update(level="ERROR", status_message=str(exc))
+            raise
+        finally:
+            flush_traces()
+
+    try:
+        return _run_async(_execute())
+    except Exception as exc:
+        logger.exception("detect_at_risk_employees failed")
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.bulk_onboard_employees",
+    queue="default",
+    max_retries=2,
+    default_retry_delay=120,
+)
+def bulk_onboard_employees(self, org_id: str, valid_rows: list) -> Dict[str, Any]:
+    """Process bulk employee onboarding from a validated CSV upload.
+
+    Creates invitation records for each valid employee row. Delegates
+    to InvitationService when available (story 10-3); until then,
+    logs each row as a placeholder.
+
+    Args:
+        org_id: Organization UUID string.
+        valid_rows: List of validated row dicts with at least ``email``.
+
+    Returns:
+        Dict with processing summary.
+    """
+
+    async def _execute():
+        from app.db.engine import AsyncSessionLocal
+
+        logger.info(
+            "bulk_onboard_employees: processing %d rows for org %s",
+            len(valid_rows),
+            org_id,
+        )
+
+        processed = 0
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                for row in valid_rows:
+                    # Placeholder: will delegate to InvitationService (story 10-3)
+                    logger.info(
+                        "bulk_onboard_employees: queued invitation for %s",
+                        row.get("email"),
+                    )
+                    processed += 1
+
+        return {
+            "status": "completed",
+            "org_id": org_id,
+            "processed": processed,
+            "total": len(valid_rows),
+        }
+
+    try:
+        return _run_async(_execute())
+    except Exception as exc:
+        logger.exception(
+            "bulk_onboard_employees failed for org %s: %s", org_id, exc
+        )
+        raise self.retry(exc=exc)

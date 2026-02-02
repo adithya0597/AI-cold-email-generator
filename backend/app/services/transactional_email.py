@@ -73,6 +73,30 @@ TEMPLATES: Dict[str, str] = {
         grace period expires.</p>
     </div>
     """,
+    "nudge": """
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Your career transition tools are ready when you are</h1>
+        <p>Hi {user_name},</p>
+        <p>We noticed it has been a while since you last visited JobPilot. Your AI career
+        agent is still here and ready to help you find your next opportunity.</p>
+        <p>Whether you are actively searching or just keeping your options open,
+        here is what your agent can do for you:</p>
+        <ul>
+            <li>Find new job matches tailored to your preferences</li>
+            <li>Keep your application pipeline up to date</li>
+            <li>Prepare you for upcoming interviews</li>
+        </ul>
+        <a href="{dashboard_url}" style="display: inline-block; padding: 12px 24px;
+           background-color: #4F46E5; color: white; text-decoration: none;
+           border-radius: 6px; margin-top: 16px;">
+           Return to Dashboard
+        </a>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
+        <p style="color: #6B7280; font-size: 12px;">
+            This is a courtesy reminder from your organization's JobPilot subscription.
+        </p>
+    </div>
+    """,
     "invitation": """
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         {logo_html}
@@ -265,5 +289,34 @@ async def send_invitation_email(
     return await send_email(
         to=to,
         subject=f"You have been invited to join {company_name} on JobPilot",
+        html=html,
+    )
+
+
+async def send_nudge_email(
+    to: str,
+    user_name: str,
+    dashboard_url: str = "https://app.jobpilot.ai/dashboard",
+) -> Dict[str, Any]:
+    """Send a generic re-engagement nudge email.
+
+    Content is intentionally generic -- no personalized data from the
+    user's pipeline, applications, or job matches.
+
+    Args:
+        to: Recipient email address.
+        user_name: User's display name for greeting.
+        dashboard_url: Link back to the dashboard.
+
+    Returns:
+        Resend API response dict.
+    """
+    html = TEMPLATES["nudge"].format(
+        user_name=user_name,
+        dashboard_url=dashboard_url,
+    )
+    return await send_email(
+        to=to,
+        subject="Your career tools are waiting -- JobPilot",
         html=html,
     )

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, agents, applications, auth, briefings, documents, h1b, health, integrations, invitations, learned_preferences, matches, onboarding, preferences, privacy, users, webhooks, ws
+from app.api.v1 import admin, admin_enterprise, agents, applications, auth, briefings, documents, h1b, health, integrations, invitations, learned_preferences, matches, onboarding, preferences, privacy, users, webhooks, ws
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -43,3 +43,4 @@ api_router.include_router(webhooks.router)
 
 # --- admin ---
 api_router.include_router(admin.router)
+api_router.include_router(admin_enterprise.router)
