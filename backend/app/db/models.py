@@ -148,6 +148,11 @@ class AutonomyLevel(str, enum.Enum):
     L3_AUTONOMOUS = "l3"
 
 
+class OrgRole(str, enum.Enum):
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
 # ============================================================
 # Mixin for soft delete columns
 # ============================================================
@@ -202,6 +207,11 @@ class User(TimestampMixin, Base):
     onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
     display_name = Column(Text, nullable=True)
 
+    # Organization membership (denormalized for quick lookup)
+    org_id = Column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True
+    )
+
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
     preferences = relationship(
@@ -212,6 +222,46 @@ class User(TimestampMixin, Base):
     documents = relationship("Document", back_populates="user")
     agent_actions = relationship("AgentAction", back_populates="user")
     agent_outputs = relationship("AgentOutput", back_populates="user")
+
+
+class Organization(SoftDeleteMixin, TimestampMixin, Base):
+    __tablename__ = "organizations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name = Column(String, nullable=False)
+    logo_url = Column(String, nullable=True)
+    settings = Column(JSONB, server_default="{}")
+
+    # Relationships
+    members = relationship("OrganizationMember", back_populates="organization")
+
+
+class OrganizationMember(TimestampMixin, Base):
+    __tablename__ = "organization_members"
+    __table_args__ = (
+        UniqueConstraint("org_id", "user_id", name="uq_org_member"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    org_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role = Column(
+        Enum(OrgRole, name="org_role", create_type=False),
+        nullable=False,
+        default=OrgRole.MEMBER,
+    )
+
+    # Relationships
+    organization = relationship("Organization", back_populates="members")
+    user = relationship("User", backref="org_memberships")
 
 
 class Profile(SoftDeleteMixin, TimestampMixin, Base):
