@@ -73,6 +73,35 @@ TEMPLATES: Dict[str, str] = {
         grace period expires.</p>
     </div>
     """,
+    "invitation": """
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        {logo_html}
+        <h1 style="color: #4F46E5;">You have been invited to join {company_name}</h1>
+        <p>Hi{recipient_name},</p>
+        <p><strong>{admin_name}</strong> has invited you to join <strong>{company_name}</strong>
+        on JobPilot.</p>
+        <p style="color: #374151;">As a member, you will get access to enterprise-tier AI career
+        tools including automated job matching, resume tailoring, and application tracking
+        -- all managed by your organization.</p>
+        <div style="margin: 32px 0; text-align: center;">
+            <a href="{accept_url}" style="display: inline-block; padding: 14px 32px;
+               background-color: #4F46E5; color: white; text-decoration: none;
+               border-radius: 6px; font-weight: bold; font-size: 16px;">
+               Accept Invitation
+            </a>
+        </div>
+        <p style="text-align: center;">
+            <a href="{decline_url}" style="color: #6B7280; font-size: 14px;">
+                Decline this invitation
+            </a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
+        <p style="color: #6B7280; font-size: 12px;">
+            This invitation expires in 7 days. If you did not expect this email,
+            you can safely ignore it.
+        </p>
+    </div>
+    """,
 }
 
 
@@ -190,5 +219,51 @@ async def send_account_deletion_notice(
     return await send_email(
         to=to,
         subject="Account Deletion Scheduled -- JobPilot",
+        html=html,
+    )
+
+
+async def send_invitation_email(
+    to: str,
+    admin_name: str,
+    company_name: str,
+    accept_url: str,
+    decline_url: str,
+    recipient_first_name: Optional[str] = None,
+    logo_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Send a branded employee invitation email.
+
+    Args:
+        to: Invitee email address.
+        admin_name: Display name of the admin who sent the invite.
+        company_name: Organization name for branding.
+        accept_url: Full URL for the Accept action.
+        decline_url: Full URL for the Decline action.
+        recipient_first_name: Optional first name for personalisation.
+        logo_url: Optional company logo URL.
+
+    Returns:
+        Resend API response dict.
+    """
+    recipient_name = f" {recipient_first_name}" if recipient_first_name else ""
+    logo_html = (
+        f'<img src="{logo_url}" alt="{company_name}" '
+        f'style="max-height: 48px; margin-bottom: 16px;" />'
+        if logo_url
+        else ""
+    )
+
+    html = TEMPLATES["invitation"].format(
+        logo_html=logo_html,
+        company_name=company_name,
+        recipient_name=recipient_name,
+        admin_name=admin_name,
+        accept_url=accept_url,
+        decline_url=decline_url,
+    )
+    return await send_email(
+        to=to,
+        subject=f"You have been invited to join {company_name} on JobPilot",
         html=html,
     )
