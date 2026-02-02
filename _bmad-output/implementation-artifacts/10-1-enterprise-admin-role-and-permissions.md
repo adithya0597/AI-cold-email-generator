@@ -48,15 +48,15 @@ So that **I can manage my organization's workforce deployment without accessing 
   - [x] 5.2 Update `backend/app/api/v1/admin.py` — add `require_admin` dependency to `/dlq` endpoint
   - [ ] 5.3 Ensure backward compatibility: if no org exists yet, existing endpoints still function for superadmin-type users
 
-- [ ] Task 6: Write tests (AC: #1-#7)
-  - [ ] 6.1 Create `backend/tests/unit/test_auth/test_admin.py`
-  - [ ] 6.2 Test `require_admin` returns AdminContext for user with admin role
-  - [ ] 6.3 Test `require_admin` raises 403 for user with member role
-  - [ ] 6.4 Test `require_admin` raises 403 for user with no organization membership
-  - [ ] 6.5 Test `log_audit_event()` creates AuditLog record with correct fields
-  - [ ] 6.6 Test Organization model creation with settings JSONB
-  - [ ] 6.7 Test OrganizationMember unique constraint on (org_id, user_id)
-  - [ ] 6.8 Test existing admin endpoints now require admin role
+- [x] Task 6: Write tests (AC: #1-#7)
+  - [x] 6.1 Create `backend/tests/unit/test_auth/test_admin.py`
+  - [x] 6.2 Test `require_admin` returns AdminContext for user with admin role
+  - [x] 6.3 Test `require_admin` raises 403 for user with member role
+  - [x] 6.4 Test `require_admin` raises 403 for user with no organization membership
+  - [x] 6.5 Test `log_audit_event()` creates AuditLog record with correct fields
+  - [x] 6.6 Test Organization model creation with settings JSONB
+  - [x] 6.7 Test OrganizationMember unique constraint on (org_id, user_id)
+  - [x] 6.8 Test existing admin endpoints now require admin role
 
 ## Dev Notes
 
