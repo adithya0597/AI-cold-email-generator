@@ -163,17 +163,17 @@ development_status:
   # ═══════════════════════════════════════════
   # Epic 7: H1B Specialist Experience (10 stories)
   # ═══════════════════════════════════════════
-  epic-7: in-progress
-  7-1-h1b-data-aggregation-pipeline: review
-  7-2-h1bgrader-integration: review
-  7-3-myvisajobs-integration: review
-  7-4-uscis-public-data-integration: review
-  7-5-sponsor-scorecard-ui: review
-  7-6-approval-rate-visualization: review
-  7-7-verified-sponsor-badge-on-job-cards: review
-  7-8-h1b-filter-in-job-search: review
-  7-9-sponsor-data-freshness-infrastructure: review
-  7-10-h1b-empty-state: backlog
+  epic-7: done
+  7-1-h1b-data-aggregation-pipeline: done
+  7-2-h1bgrader-integration: done
+  7-3-myvisajobs-integration: done
+  7-4-uscis-public-data-integration: done
+  7-5-sponsor-scorecard-ui: done
+  7-6-approval-rate-visualization: done
+  7-7-verified-sponsor-badge-on-job-cards: done
+  7-8-h1b-filter-in-job-search: done
+  7-9-sponsor-data-freshness-infrastructure: done
+  7-10-h1b-empty-state: done
   epic-7-retrospective: optional
 
   # ═══════════════════════════════════════════
