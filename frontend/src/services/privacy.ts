@@ -51,6 +51,7 @@ const privacyKeys = {
   stealth: () => [...privacyKeys.all, 'stealth'] as const,
   blocklist: () => [...privacyKeys.all, 'blocklist'] as const,
   proof: () => [...privacyKeys.all, 'proof'] as const,
+  passiveMode: () => [...privacyKeys.all, 'passive-mode'] as const,
 };
 
 export function useStealthStatus() {
@@ -133,6 +134,55 @@ export function useDownloadReport() {
     mutationFn: async () => {
       const res = await api.get('/api/v1/privacy/proof/report');
       return res.data;
+    },
+  });
+}
+
+export interface PassiveModeSettings {
+  search_frequency: string;
+  min_match_score: number;
+  notification_pref: string;
+  auto_save_threshold: number;
+  mode: string;
+  eligible: boolean;
+  tier: string | null;
+}
+
+export function usePassiveMode() {
+  const api = useApiClient();
+  return useQuery({
+    queryKey: privacyKeys.passiveMode(),
+    queryFn: async (): Promise<PassiveModeSettings> => {
+      const res = await api.get('/api/v1/privacy/passive-mode');
+      return res.data;
+    },
+  });
+}
+
+export function useUpdatePassiveMode() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (settings: Partial<Pick<PassiveModeSettings, 'search_frequency' | 'min_match_score' | 'notification_pref' | 'auto_save_threshold'>>) => {
+      const res = await api.put('/api/v1/privacy/passive-mode', settings);
+      return res.data as PassiveModeSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: privacyKeys.passiveMode() });
+    },
+  });
+}
+
+export function useActivateSprint() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/api/v1/privacy/passive-mode/sprint');
+      return res.data as PassiveModeSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: privacyKeys.passiveMode() });
     },
   });
 }

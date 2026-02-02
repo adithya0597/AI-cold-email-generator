@@ -452,3 +452,208 @@ async def download_privacy_report(
             "blocked_actions_log": audit_log,
             "total_exposures": 0,
         }
+
+
+# ============================================================
+# Passive Mode Settings
+# ============================================================
+
+ENSURE_PASSIVE_TABLE = (
+    "CREATE TABLE IF NOT EXISTS passive_mode_settings ("
+    "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+    "  user_id TEXT NOT NULL UNIQUE,"
+    "  search_frequency TEXT NOT NULL DEFAULT 'weekly',"
+    "  min_match_score INTEGER NOT NULL DEFAULT 70,"
+    "  notification_pref TEXT NOT NULL DEFAULT 'weekly_digest',"
+    "  auto_save_threshold INTEGER NOT NULL DEFAULT 85,"
+    "  mode TEXT NOT NULL DEFAULT 'passive',"
+    "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+    "  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    ")"
+)
+
+
+class PassiveModeResponse(BaseModel):
+    search_frequency: str = "weekly"
+    min_match_score: int = 70
+    notification_pref: str = "weekly_digest"
+    auto_save_threshold: int = 85
+    mode: str = "passive"
+    eligible: bool = False
+    tier: Optional[str] = None
+
+
+class UpdatePassiveModeRequest(BaseModel):
+    search_frequency: Optional[str] = None
+    min_match_score: Optional[int] = None
+    notification_pref: Optional[str] = None
+    auto_save_threshold: Optional[int] = None
+
+
+@router.get("/passive-mode", response_model=PassiveModeResponse)
+async def get_passive_mode(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return current passive mode settings and tier eligibility."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(text(ENSURE_PASSIVE_TABLE))
+        await session.commit()
+
+        # Get tier
+        result = await session.execute(
+            text("SELECT tier FROM users WHERE clerk_id = :uid"),
+            {"uid": user_id},
+        )
+        row = result.mappings().first()
+        tier = str(row["tier"]) if row else None
+        eligible = tier in ELIGIBLE_TIERS
+
+        # Get settings
+        result = await session.execute(
+            text(
+                "SELECT search_frequency, min_match_score, notification_pref, "
+                "auto_save_threshold, mode FROM passive_mode_settings "
+                "WHERE user_id = :uid"
+            ),
+            {"uid": user_id},
+        )
+        settings_row = result.mappings().first()
+
+        if settings_row:
+            return PassiveModeResponse(
+                search_frequency=settings_row["search_frequency"],
+                min_match_score=settings_row["min_match_score"],
+                notification_pref=settings_row["notification_pref"],
+                auto_save_threshold=settings_row["auto_save_threshold"],
+                mode=settings_row["mode"],
+                eligible=eligible,
+                tier=tier,
+            )
+
+        return PassiveModeResponse(eligible=eligible, tier=tier)
+
+
+@router.put("/passive-mode", response_model=PassiveModeResponse)
+async def update_passive_mode(
+    body: UpdatePassiveModeRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Update passive mode settings. Requires Career Insurance or Enterprise tier."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(text(ENSURE_PASSIVE_TABLE))
+        await session.commit()
+
+        # Check tier
+        result = await session.execute(
+            text("SELECT tier FROM users WHERE clerk_id = :uid"),
+            {"uid": user_id},
+        )
+        row = result.mappings().first()
+        tier = str(row["tier"]) if row else None
+
+        if tier not in ELIGIBLE_TIERS:
+            raise HTTPException(
+                status_code=403,
+                detail="Passive Mode requires Career Insurance or Enterprise tier.",
+            )
+
+        # Build SET clause from provided fields
+        updates = {}
+        if body.search_frequency is not None:
+            updates["search_frequency"] = body.search_frequency
+        if body.min_match_score is not None:
+            updates["min_match_score"] = body.min_match_score
+        if body.notification_pref is not None:
+            updates["notification_pref"] = body.notification_pref
+        if body.auto_save_threshold is not None:
+            updates["auto_save_threshold"] = body.auto_save_threshold
+
+        freq = updates.get("search_frequency", "weekly")
+        score = updates.get("min_match_score", 70)
+        notif = updates.get("notification_pref", "weekly_digest")
+        auto_save = updates.get("auto_save_threshold", 85)
+
+        await session.execute(
+            text(
+                "INSERT INTO passive_mode_settings "
+                "(user_id, search_frequency, min_match_score, notification_pref, auto_save_threshold) "
+                "VALUES (:uid, :freq, :score, :notif, :auto_save) "
+                "ON CONFLICT (user_id) DO UPDATE SET "
+                "search_frequency = :freq, min_match_score = :score, "
+                "notification_pref = :notif, auto_save_threshold = :auto_save, "
+                "updated_at = NOW()"
+            ),
+            {"uid": user_id, "freq": freq, "score": score, "notif": notif, "auto_save": auto_save},
+        )
+        await session.commit()
+
+        return PassiveModeResponse(
+            search_frequency=freq,
+            min_match_score=score,
+            notification_pref=notif,
+            auto_save_threshold=auto_save,
+            mode="passive",
+            eligible=True,
+            tier=tier,
+        )
+
+
+@router.post("/passive-mode/sprint", response_model=PassiveModeResponse)
+async def activate_sprint_mode(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Switch to Sprint mode — daily frequency, lower thresholds, immediate notifications."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(text(ENSURE_PASSIVE_TABLE))
+        await session.commit()
+
+        # Check tier
+        result = await session.execute(
+            text("SELECT tier FROM users WHERE clerk_id = :uid"),
+            {"uid": user_id},
+        )
+        row = result.mappings().first()
+        tier = str(row["tier"]) if row else None
+
+        if tier not in ELIGIBLE_TIERS:
+            raise HTTPException(
+                status_code=403,
+                detail="Sprint Mode requires Career Insurance or Enterprise tier.",
+            )
+
+        await session.execute(
+            text(
+                "INSERT INTO passive_mode_settings "
+                "(user_id, search_frequency, min_match_score, notification_pref, "
+                "auto_save_threshold, mode) "
+                "VALUES (:uid, 'daily', 50, 'immediate', 70, 'sprint') "
+                "ON CONFLICT (user_id) DO UPDATE SET "
+                "search_frequency = 'daily', min_match_score = 50, "
+                "notification_pref = 'immediate', auto_save_threshold = 70, "
+                "mode = 'sprint', updated_at = NOW()"
+            ),
+            {"uid": user_id},
+        )
+        await session.commit()
+
+        return PassiveModeResponse(
+            search_frequency="daily",
+            min_match_score=50,
+            notification_pref="immediate",
+            auto_save_threshold=70,
+            mode="sprint",
+            eligible=True,
+            tier=tier,
+        )
