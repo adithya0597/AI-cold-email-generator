@@ -65,6 +65,7 @@ class InvitationService:
             org_id=org_uuid,
             email=email.lower().strip(),
             invited_by=inviter_uuid,
+            status=InvitationStatus.PENDING,
             first_name=first_name,
             last_name=last_name,
             expires_at=datetime.now(timezone.utc) + timedelta(days=INVITATION_EXPIRY_DAYS),
