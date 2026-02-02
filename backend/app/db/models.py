@@ -154,6 +154,14 @@ class OrgRole(str, enum.Enum):
     MEMBER = "member"
 
 
+class InvitationStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    EXPIRED = "expired"
+    REVOKED = "revoked"
+
+
 # ============================================================
 # Mixin for soft delete columns
 # ============================================================
@@ -298,6 +306,51 @@ class AuditLog(Base):
     # Relationships
     organization = relationship("Organization")
     actor = relationship("User")
+
+
+class Invitation(Base):
+    """Employee invitation record for enterprise onboarding.
+
+    Tracks invitation lifecycle: pending -> accepted/declined/expired/revoked.
+    Tokens are UUID v4, single-use (status changes on accept/decline).
+    """
+
+    __tablename__ = "invitations"
+    __table_args__ = (
+        Index("ix_invitations_token", "token", unique=True),
+        Index("ix_invitations_org_email_status", "org_id", "email", "status"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    org_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    email = Column(String, nullable=False)
+    token = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid4)
+    status = Column(
+        Enum(InvitationStatus, name="invitation_status", create_type=False),
+        nullable=False,
+        default=InvitationStatus.PENDING,
+    )
+    invited_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Relationships
+    organization = relationship("Organization")
+    inviter = relationship("User")
 
 
 class Profile(SoftDeleteMixin, TimestampMixin, Base):
