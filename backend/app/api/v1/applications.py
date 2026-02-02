@@ -594,6 +594,7 @@ class FollowupSuggestionItem(BaseModel):
     draft_subject: Optional[str] = None
     draft_body: Optional[str] = None
     created_at: Optional[str] = None
+    followup_count: int = 0
 
 
 class FollowupListResponse(BaseModel):
@@ -617,7 +618,10 @@ async def list_followups(
             text(
                 "SELECT fs.id, fs.application_id, fs.company, fs.job_title, "
                 "fs.status, fs.followup_date, fs.draft_subject, fs.draft_body, "
-                "fs.created_at "
+                "fs.created_at, "
+                "(SELECT COUNT(*) FROM followup_suggestions s2 "
+                " WHERE s2.application_id = fs.application_id "
+                " AND s2.sent_at IS NOT NULL) AS followup_count "
                 "FROM followup_suggestions fs "
                 "WHERE fs.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
                 "AND fs.dismissed_at IS NULL "
@@ -639,6 +643,7 @@ async def list_followups(
             draft_subject=str(r["draft_subject"]) if r["draft_subject"] else None,
             draft_body=str(r["draft_body"]) if r["draft_body"] else None,
             created_at=str(r["created_at"]) if r["created_at"] else None,
+            followup_count=int(r["followup_count"]) if r["followup_count"] else 0,
         )
         for r in rows
     ]
@@ -778,3 +783,97 @@ async def send_followup(
         "status": "sent",
         "suggestion_id": suggestion_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# Follow-up tracking endpoints (Story 6-9)
+# ---------------------------------------------------------------------------
+
+
+class FollowupHistoryItem(BaseModel):
+    """A single sent follow-up record."""
+
+    id: str
+    draft_subject: Optional[str] = None
+    sent_at: Optional[str] = None
+
+
+class FollowupHistoryResponse(BaseModel):
+    """Response for GET /applications/{id}/followup-history."""
+
+    history: List[FollowupHistoryItem]
+    followup_count: int
+    last_followup_at: Optional[str] = None
+
+
+@router.get("/{application_id}/followup-history", response_model=FollowupHistoryResponse)
+async def get_followup_history(
+    application_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return sent follow-ups for a specific application."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                "SELECT fs.id, fs.draft_subject, fs.sent_at "
+                "FROM followup_suggestions fs "
+                "WHERE fs.application_id = :aid "
+                "AND fs.user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND fs.sent_at IS NOT NULL "
+                "ORDER BY fs.sent_at DESC"
+            ),
+            {"aid": application_id, "uid": user_id},
+        )
+        rows = result.mappings().all()
+
+    history = [
+        FollowupHistoryItem(
+            id=str(r["id"]),
+            draft_subject=str(r["draft_subject"]) if r["draft_subject"] else None,
+            sent_at=str(r["sent_at"]) if r["sent_at"] else None,
+        )
+        for r in rows
+    ]
+
+    return FollowupHistoryResponse(
+        history=history,
+        followup_count=len(history),
+        last_followup_at=history[0].sent_at if history else None,
+    )
+
+
+@router.post("/followups/{suggestion_id}/mark-manual")
+async def mark_manual_followup(
+    suggestion_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Mark a follow-up as done manually (outside the app)."""
+    from sqlalchemy import text
+
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text(
+                "UPDATE followup_suggestions "
+                "SET sent_at = NOW(), dismissed_at = NOW(), "
+                "draft_subject = COALESCE(draft_subject, 'Manual follow-up') "
+                "WHERE id = :sid "
+                "AND user_id = (SELECT id FROM users WHERE clerk_id = :uid) "
+                "AND sent_at IS NULL"
+            ),
+            {"sid": suggestion_id, "uid": user_id},
+        )
+        await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Follow-up suggestion not found or already sent",
+        )
+
+    return {"status": "marked_manual", "suggestion_id": suggestion_id}

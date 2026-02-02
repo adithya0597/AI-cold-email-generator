@@ -27,11 +27,24 @@ export interface FollowupSuggestion {
   draft_subject: string | null;
   draft_body: string | null;
   created_at: string | null;
+  followup_count: number;
 }
 
 export interface FollowupListResponse {
   suggestions: FollowupSuggestion[];
   total: number;
+}
+
+export interface FollowupHistoryItem {
+  id: string;
+  draft_subject: string | null;
+  sent_at: string | null;
+}
+
+export interface FollowupHistoryResponse {
+  history: FollowupHistoryItem[];
+  followup_count: number;
+  last_followup_at: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +54,7 @@ export interface FollowupListResponse {
 export const followupKeys = {
   all: ['followups'] as const,
   list: () => ['followups', 'list'] as const,
+  history: (applicationId: string) => ['followups', 'history', applicationId] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -80,6 +94,24 @@ async function dismissFollowup(
 ): Promise<{ status: string; suggestion_id: string }> {
   const { data } = await api.patch(
     `/api/v1/applications/followups/${suggestionId}/dismiss`,
+  );
+  return data;
+}
+
+async function fetchFollowupHistory(
+  api: AxiosInstance,
+  applicationId: string,
+): Promise<FollowupHistoryResponse> {
+  const { data } = await api.get(`/api/v1/applications/${applicationId}/followup-history`);
+  return data;
+}
+
+async function markManualFollowup(
+  api: AxiosInstance,
+  suggestionId: string,
+): Promise<{ status: string; suggestion_id: string }> {
+  const { data } = await api.post(
+    `/api/v1/applications/followups/${suggestionId}/mark-manual`,
   );
   return data;
 }
@@ -153,6 +185,28 @@ export function useCopyFollowup() {
       await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
       return sendFollowup(api, suggestionId);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: followupKeys.all });
+    },
+  });
+}
+
+export function useFollowupHistory(applicationId: string) {
+  const api = useApiClient();
+  return useQuery({
+    queryKey: followupKeys.history(applicationId),
+    queryFn: () => fetchFollowupHistory(api, applicationId),
+    enabled: !!applicationId,
+  });
+}
+
+export function useMarkManualFollowup() {
+  const api = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ suggestionId }: { suggestionId: string }) =>
+      markManualFollowup(api, suggestionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: followupKeys.all });
     },

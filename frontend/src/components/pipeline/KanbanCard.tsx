@@ -1,11 +1,13 @@
 /**
  * Kanban card component for displaying an application in the pipeline board.
  *
- * Shows company, title, days in stage, last update, and agent indicator.
+ * Shows company, title, days in stage, last update, agent indicator,
+ * last-followed-up indicator, and overdue follow-up badge.
  * Supports HTML5 drag and drop.
  */
 
 import type { ApplicationItem } from '../../services/applications';
+import { useFollowupHistory, useFollowups } from '../../services/followups';
 
 interface KanbanCardProps {
   application: ApplicationItem;
@@ -22,6 +24,17 @@ function daysSince(dateString: string): number {
 export default function KanbanCard({ application, onClick }: KanbanCardProps) {
   const days = daysSince(application.applied_at);
   const isAgentUpdated = application.last_updated_by === 'agent';
+
+  const { data: historyData } = useFollowupHistory(application.id);
+  const { data: followupsData } = useFollowups();
+
+  // Check if there's an overdue, unsent follow-up for this application
+  const hasOverdue = followupsData?.suggestions.some(
+    (s) =>
+      s.application_id === application.id &&
+      s.followup_date &&
+      new Date(s.followup_date) < new Date(),
+  );
 
   function handleDragStart(e: React.DragEvent) {
     e.dataTransfer.setData('application/json', JSON.stringify({ id: application.id }));
@@ -45,19 +58,37 @@ export default function KanbanCard({ application, onClick }: KanbanCardProps) {
             {application.job_title ?? 'Untitled Position'}
           </p>
         </div>
-        {isAgentUpdated && (
-          <span
-            data-testid="agent-badge"
-            className="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700"
-          >
-            Agent
-          </span>
-        )}
+        <div className="ml-2 flex items-center gap-1">
+          {hasOverdue && (
+            <span
+              data-testid="overdue-badge"
+              className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700"
+            >
+              Overdue
+            </span>
+          )}
+          {isAgentUpdated && (
+            <span
+              data-testid="agent-badge"
+              className="inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700"
+            >
+              Agent
+            </span>
+          )}
+        </div>
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
         <span>{days}d in stage</span>
         <span>{new Date(application.applied_at).toLocaleDateString()}</span>
       </div>
+      {historyData && historyData.last_followup_at && (
+        <div
+          className="mt-1 text-xs text-gray-400"
+          data-testid="last-followup-indicator"
+        >
+          Last followed up: {daysSince(historyData.last_followup_at)}d ago
+        </div>
+      )}
     </div>
   );
 }

@@ -47,6 +47,7 @@ class TestListFollowups:
             "draft_subject": "Follow-up",
             "draft_body": "Hello",
             "created_at": "2025-01-10T00:00:00+00:00",
+            "followup_count": 0,
         }[key]
 
         mock_result = MagicMock()
