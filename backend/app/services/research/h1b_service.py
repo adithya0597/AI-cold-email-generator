@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy import text
@@ -91,6 +91,33 @@ def normalize_company_name(name: str) -> str:
     result = _SUFFIX_PATTERN.sub("", name)
     result = re.sub(r"\s+", " ", result).strip().lower()
     return result
+
+
+# ---------------------------------------------------------------------------
+# Data freshness utilities
+# ---------------------------------------------------------------------------
+
+
+def is_stale(updated_at: Optional[datetime], threshold_days: int = 7) -> bool:
+    """Check if data is stale (older than threshold_days)."""
+    if updated_at is None:
+        return True
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at)
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    age = datetime.now(timezone.utc) - updated_at
+    return age >= timedelta(days=threshold_days)
+
+
+def get_stale_warning(updated_at: Optional[datetime]) -> Optional[Dict[str, Any]]:
+    """Return a stale data warning if data is older than 14 days."""
+    if not is_stale(updated_at, threshold_days=14):
+        return None
+    return {
+        "stale_warning": True,
+        "message": "Data may be outdated. Last updated more than 14 days ago.",
+    }
 
 
 # ---------------------------------------------------------------------------

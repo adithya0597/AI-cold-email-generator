@@ -74,7 +74,12 @@ async def get_sponsor(
     if not row:
         raise HTTPException(status_code=404, detail=f"No H1B data found for '{company}'")
 
-    return {
+    from app.services.research.h1b_service import get_stale_warning
+
+    updated_at = row["updated_at"]
+    stale = get_stale_warning(updated_at)
+
+    response = {
         "company_name": row["company_name"],
         "company_name_normalized": row["company_name_normalized"],
         "domain": row["domain"],
@@ -87,8 +92,14 @@ async def get_sponsor(
             "myvisajobs": str(row["last_updated_myvisajobs"]) if row["last_updated_myvisajobs"] else None,
             "uscis": str(row["last_updated_uscis"]) if row["last_updated_uscis"] else None,
         },
-        "last_updated": str(row["updated_at"]) if row["updated_at"] else None,
+        "updated_at": str(updated_at) if updated_at else None,
     }
+
+    if stale:
+        response["stale_warning"] = stale["stale_warning"]
+        response["stale_message"] = stale["message"]
+
+    return response
 
 
 @router.get("/sponsors")
@@ -131,4 +142,33 @@ async def search_sponsors(
             }
             for r in rows
         ],
+    }
+
+
+@router.get("/metrics")
+async def get_h1b_metrics(
+    user_id: str = Depends(get_current_user_id),
+):
+    """Get H1B data freshness metrics."""
+    from app.db.engine import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await _ensure_h1b_tables(session)
+        await _check_h1b_tier(session, user_id)
+
+        result = await session.execute(
+            text("""
+                SELECT
+                    COUNT(*)::int AS total_sponsors,
+                    COUNT(*) FILTER (WHERE updated_at < NOW() - INTERVAL '7 days')::int AS stale_count,
+                    COALESCE(EXTRACT(EPOCH FROM AVG(NOW() - updated_at)) / 86400.0, 0) AS avg_age_days
+                FROM h1b_sponsors
+            """),
+        )
+        row = result.mappings().first()
+
+    return {
+        "total_sponsors": row["total_sponsors"],
+        "stale_count": row["stale_count"],
+        "avg_age_days": round(row["avg_age_days"], 1),
     }
