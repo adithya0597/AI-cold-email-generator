@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '../providers/ClerkProvider';
 import { createReconnect, type ReconnectController } from '../lib/ws-reconnect';
 import { useApiClient } from '../services/api';
 

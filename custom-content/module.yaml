@@ -1,0 +1,16 @@
+# Custom Module Configuration for BMAD
+# See: http://docs.bmad-method.org for module documentation
+
+code: custom
+name: AI Cold Email Generator Custom Module
+description: Custom agents and workflows for AI cold email generation project
+version: 1.0.0
+
+# Optional: Define custom agents
+agents: []
+
+# Optional: Define custom workflows  
+workflows: []
+
+# Optional: Define custom templates
+templates: []

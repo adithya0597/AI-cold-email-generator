@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { useAuth } from '@clerk/clerk-react';
 import { useMemo } from 'react';
+import { useAuth, isDevAuthMode } from '../providers/ClerkProvider';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -37,7 +37,18 @@ api.interceptors.response.use(
 //   const apiClient = useApiClient();
 //   const data = await apiClient.get('/api/v1/users/me');
 // ----------------------------------------------------------------
-export function useApiClient(): AxiosInstance {
+// Dev mode: simple axios instance without Clerk auth (module-level singleton)
+const devApiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 60000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+function useDevApiClient(): AxiosInstance {
+  return devApiClient;
+}
+
+function useClerkApiClient(): AxiosInstance {
   const { getToken } = useAuth();
 
   const authenticatedApi = useMemo(() => {
@@ -82,6 +93,10 @@ export function useApiClient(): AxiosInstance {
 
   return authenticatedApi;
 }
+
+export const useApiClient: () => AxiosInstance = isDevAuthMode
+  ? useDevApiClient
+  : useClerkApiClient;
 
 // ----------------------------------------------------------------
 // Legacy service wrappers (preserved for backward compatibility)

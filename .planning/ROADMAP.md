@@ -24,6 +24,7 @@ JobPilot transforms a cold-email-generator codebase into an AI-powered multi-age
 - [ ] **Phase 7: H1B Sponsorship Intelligence** - Government data ETL, sponsor scores, badges
 - [ ] **Phase 8: Apply Agent + Approval Queue** - Auto-apply, cover letters, approval workflow
 - [ ] **Phase 9: Advanced Features + Hardening** - Follow-up agent, stealth mode, network assistant, production ops
+- [ ] **Phase 10: Frontend Alignment + LinkedIn Post Generator v2** - Surface all built features, modernize LinkedIn content tool
 
 ---
 
@@ -178,24 +179,26 @@ Plans:
 4. Autonomy level (L0-L3) is enforced -- an L0 user's agents only suggest, an L2 user's agents act but surface in approval digest, and this is verifiable via test
 5. If the briefing pipeline fails, a "lite briefing" from cache is shown instead of an error
 
-**Plans**: 6 plans in 4 waves
+**Plans**: 8 plans in 5 waves
 Plans:
-- [ ] Plan 01 -- Database Schema + Backend Models (Wave 1)
-- [ ] Plan 02 -- Analytics Infrastructure - PostHog (Wave 1)
-- [ ] Plan 03 -- Resume Upload + Profile Extraction Backend (Wave 2)
-- [ ] Plan 04 -- Preferences Backend + Shared Frontend Components (Wave 2)
-- [ ] Plan 05 -- Onboarding Frontend Flow (Wave 3)
-- [ ] Plan 06 -- Preference Wizard Frontend + Integration Wiring (Wave 4)
+- [ ] Plan 01 -- ADR-1 Prototype: LangGraph vs Custom Orchestrator (Wave 0, gate)
+- [ ] Plan 02 -- Database Schema + Agent Models (Wave 1)
+- [ ] Plan 03 -- BaseAgent + Tier Enforcement + Brake Module (Wave 1)
+- [ ] Plan 04 -- Orchestrator + Langfuse Observability (Wave 2)
+- [ ] Plan 05 -- Briefing Pipeline Backend (Wave 2)
+- [ ] Plan 06 -- Emergency Brake Frontend + Agent Activity Feed (Wave 3)
+- [ ] Plan 07 -- Briefing Frontend: In-App Display + Settings + Empty State (Wave 3)
+- [ ] Plan 08 -- Integration Tests + VCR Cassettes + Phase Verification (Wave 4)
 
 **ADRs to Resolve**:
-- ADR-1: Agent Orchestration Framework (LangGraph vs. custom) -- resolve with 2-day prototype before committing
-- LLM mock strategy for deterministic agent testing (VCR-style recorded responses vs. templated vs. low-temp actual LLM)
+- ADR-1: Agent Orchestration Framework (LangGraph vs. custom) -- resolve with prototype in Plan 01
+- LLM mock strategy: VCR.py for deterministic recorded responses (decided in RESEARCH.md)
 
 **Risks**:
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | LangGraph 1.0 too immature for production autonomy patterns | Medium | High | Time-boxed prototype; if it doesn't map cleanly to L0-L3, go custom |
-| Orchestrator becomes god object | Medium | High | Split into TaskRouter + StateManager + TierEnforcer from day 1 |
+| Orchestrator becomes god object | Medium | High | Split into TaskRouter + TierEnforcer + BrakeManager from day 1 |
 | WebSocket scaling issues at load | Low | Medium | Redis Pub/Sub as message bus; REST fallback for missed events |
 
 ---
@@ -509,6 +512,34 @@ Plans:
 
 ---
 
+### Phase 10: Frontend Alignment + LinkedIn Post Generator v2
+
+**Goal**: The frontend fully reflects the designed JobPilot career agent platform -- all built features are discoverable via navigation, the landing page communicates the product vision, and the LinkedIn Post Generator is rebuilt as a modern TypeScript component with improved UX, template library, and analytics integration.
+
+**Depends on**: Phase 9
+
+**Work Streams**:
+- **Frontend Alignment (partially complete)**: Landing page rewrite, nav update, H1B page, OnboardingGuard dev bypass -- committed in `cd61153`
+- **LinkedIn Post Generator v2**: Rewrite legacy JSX component as TypeScript, add post templates/presets, integrate with PostHog analytics, add post history/drafts, improve mobile UX
+- **Remaining Navigation Gaps**: Enterprise admin page route, briefing history nav link from dashboard, applications page nav accessibility
+
+**Success Criteria** (what must be TRUE):
+1. Landing page at `/` describes JobPilot as an AI career agent platform, not a content generation tool
+2. Navigation surfaces all core features: Dashboard, Matches, Pipeline, Follow-ups, Privacy, Settings
+3. LinkedIn Post Generator is a modern TypeScript component with template library, post history, and analytics tracking
+4. All built pages are accessible via navigation or contextual links (no hidden routes)
+5. Legacy routes (`/email`, `/linkedin`, `/author-styles`) remain functional at their URLs
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10 to break down)
+
+**Details:**
+[To be added during planning]
+
+---
+
 ## Post-MVP / Deferred (Not Phased)
 
 These items are explicitly deferred based on research findings:
@@ -563,9 +594,9 @@ These items are explicitly deferred based on research findings:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Foundation Modernization | 0/8 | Planned | - |
-| 2. Onboarding + Preferences | 0/6 | Planned | - |
-| 3. Agent Framework Core | 0/TBD | Not started | - |
+| 1. Foundation Modernization | 8/8 | Complete | 2026-01-31 |
+| 2. Onboarding + Preferences | 6/6 | Complete | 2026-01-31 |
+| 3. Agent Framework Core | 0/8 | Planned | - |
 | 4. Job Scout Agent | 0/TBD | Not started | - |
 | 5. Resume Agent + ATS | 0/TBD | Not started | - |
 | 6. Pipeline Tracking | 0/TBD | Not started | - |
@@ -573,3 +604,4 @@ These items are explicitly deferred based on research findings:
 | 7. H1B Intelligence | 0/TBD | Not started | - |
 | 8. Apply Agent | 0/TBD | Not started | - |
 | 9. Advanced + Hardening | 0/TBD | Not started | - |
+| 10. Frontend Alignment + LinkedIn v2 | 0/TBD | Not started | - |

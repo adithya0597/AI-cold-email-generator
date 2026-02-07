@@ -102,7 +102,7 @@ If the story file lacks "Files to CREATE/MODIFY" sections entirely, default to *
 
 ## PHASE 3: ROUTE & EXECUTE
 
-### SIMPLE Route (score 0-4)
+### SIMPLE Route (score 0-4) — Direct execution, no GSD subagents
 
 1. Update sprint-status.yaml: change story status from current → `in-progress` (use Edit tool with exact old_string/new_string replacement of the status value only)
 2. Read the story's Dev Notes section fully — note all architecture compliance requirements
@@ -116,12 +116,20 @@ If the story file lacks "Files to CREATE/MODIFY" sections entirely, default to *
 4. After all tasks complete: run the full relevant test suite
 5. Proceed to Phase 4 (Verify)
 
-### MODERATE Route (score 5-8)
+### MODERATE Route (score 5-8) — Single gsd-executor subagent
 
-1. **Generate implementation plan** from story Tasks:
-   - Number each step
-   - For each step: what to do, which files, what tests to write
-   - Note any dependencies between steps
+1. **Translate BMAD story → GSD plan format** (inline, not written to file):
+   Using the translation rules below, convert the story into a GSD plan:
+
+   | BMAD Element | GSD Plan Element |
+   |---|---|
+   | Story (user story) | `### Objective` |
+   | AC1, AC2... | `### Acceptance Criteria` with `- [ ]` |
+   | Task N (AC: #X) | `Task N: {title}` |
+   | Subtasks 1.1, 1.2... | `- Action:` bullet list |
+   | Dev Notes rules | `- CRITICAL:` inline in Action |
+   | Files to CREATE/MODIFY | `- Files:` per task |
+   | AC reference | `- Why: Satisfies AC#{N}` |
 
 2. **Self-review using third-person prompting** (sycophancy mitigation):
    Think through this exact prompt before proceeding:
@@ -132,17 +140,36 @@ If the story file lacks "Files to CREATE/MODIFY" sections entirely, default to *
 
 3. Update sprint-status.yaml → `in-progress` (targeted Edit)
 
-4. Execute the plan step by step:
-   - Follow RED-GREEN-REFACTOR for each step
-   - Run relevant tests after each top-level task completes
-   - Mark subtask checkboxes `[x]` as completed
-   - On test failure: diagnose, fix, re-run (up to 3 attempts per failure)
+4. **Spawn ONE `gsd-executor`** via Task tool:
+   ```
+   Task(subagent_type="gsd-executor", prompt="""
+   Execute this plan for BMAD story {story-key}.
 
-5. Proceed to Phase 4 (Verify)
+   CONSTRAINTS from Dev Notes:
+   {dev notes from story}
 
-### COMPLEX Route (score 9-16)
+   FILE BOUNDARIES:
+   CREATE: {files to create list}
+   MODIFY: {files to modify list}
+   HALT if you need files outside FILE BOUNDARIES.
 
-1. **Generate comprehensive implementation plan**:
+   PLAN:
+   {translated GSD plan from step 1}
+
+   INSTRUCTIONS:
+   - Mark checkboxes [x] in {story-file-path} as you complete tasks.
+   - Follow RED-GREEN-REFACTOR for each task.
+   - Run tests after each task completes.
+   - On test failure: diagnose, fix, re-run (up to 3 attempts per failure).
+   - After 3 consecutive failures on the same issue, HALT with full diagnostic.
+   """)
+   ```
+
+5. After executor returns → proceed to Phase 4 (Verify)
+
+### COMPLEX Route (score 9-16) — Full GSD pipeline
+
+1. **Write comprehensive PLAN.md** to `.planning/phases/bmad-story-{story-key}/PLAN.md`:
    For each step include:
    - **What**: specific implementation action
    - **Why**: which AC/task it satisfies
@@ -157,28 +184,91 @@ If the story file lacks "Files to CREATE/MODIFY" sections entirely, default to *
    > "As a principal engineer, review this plan for a COMPLEX story touching {N} files across {N} layers with security/integration concerns. Flag: (a) production-incident risks, (b) architecture violations, (c) testing gaps, (d) missing error handling at system boundaries, (e) data migration risks. Rate: APPROVE / REVISE / REJECT."
 
    - If REJECT: HALT with the review findings. User must intervene.
-   - If REVISE: apply ALL review changes to the plan before executing.
+   - If REVISE: apply ALL review changes to PLAN.md before proceeding.
    - If APPROVE: proceed.
 
-3. Update sprint-status.yaml → `in-progress` (targeted Edit)
+3. **Spawn `gsd-plan-checker`** via Task tool (up to 3 iterations):
+   ```
+   Task(subagent_type="gsd-plan-checker", prompt="""
+   Verify this plan will achieve the goal for BMAD story {story-key}.
 
-4. Execute step-by-step with verification:
-   - Implement each step following RED-GREEN-REFACTOR
-   - After each step: run its verification criteria
-   - On verification failure: retry up to 3x per step
-   - After 3 failures on same step: **HALT** with full diagnostic:
-     ```
-     HALT: Step {N} failed after 3 attempts.
-     Step: {description}
-     Error: {last error}
-     Files modified so far: {list}
-     Suggested recovery: {suggestion}
-     ```
-   - Mark checkboxes as completed
+   GOAL: {story user story / objective}
 
-5. After all steps: run full test suite as final pass
+   ACCEPTANCE CRITERIA:
+   {AC list from story}
 
-6. Proceed to Phase 4 (Verify)
+   PLAN PATH: .planning/phases/bmad-story-{story-key}/PLAN.md
+
+   Perform goal-backward analysis: does the plan fully satisfy all acceptance criteria?
+   Flag any gaps, risks, or missing steps.
+   """)
+   ```
+   - If plan-checker flags issues: amend PLAN.md and re-run (up to 3 iterations total)
+   - If still failing after 3 iterations: HALT with findings
+
+4. Update sprint-status.yaml → `in-progress` (targeted Edit)
+
+5. **Spawn `gsd-executor`** agent(s) via Task tool — **wave-based parallelization**:
+   - Analyze task dependencies in PLAN.md and group tasks into waves:
+     - **Wave**: a set of tasks whose dependencies are all satisfied (i.e., all blocking tasks are in prior waves)
+     - Tasks within the same wave have NO dependencies on each other → spawn in **parallel**
+     - Waves execute **sequentially** (wave N+1 starts only after all wave N executors return)
+   - If all tasks are independent (no dependencies): single wave, all executors in parallel
+   - If all tasks are sequential: one executor per wave (degrades to serial)
+
+   **For each wave**, spawn all its executors in a **single message with multiple Task calls**:
+   ```
+   // Wave N — spawn these Task calls IN PARALLEL (single message, multiple tool uses):
+
+   Task(subagent_type="gsd-executor", prompt="""
+   Execute ONLY tasks {task numbers in this wave} from the plan for BMAD story {story-key}.
+
+   PLAN PATH: .planning/phases/bmad-story-{story-key}/PLAN.md
+
+   CONSTRAINTS from Dev Notes:
+   {dev notes from story}
+
+   FILE BOUNDARIES:
+   CREATE: {files to create list for these tasks}
+   MODIFY: {files to modify list for these tasks}
+   HALT if you need files outside FILE BOUNDARIES.
+
+   INSTRUCTIONS:
+   - Mark checkboxes [x] in {story-file-path} as you complete tasks.
+   - Follow RED-GREEN-REFACTOR for each task.
+   - Run verification criteria after each step.
+   - On verification failure: retry up to 3x per step.
+   - After 3 failures on same step, HALT with full diagnostic.
+   - Make atomic commits after each completed task.
+   """)
+
+   // ...one Task() call per independent task in the wave
+   ```
+
+   - Wait for ALL executors in the wave to return before starting the next wave
+   - If any executor HALTs: stop subsequent waves, report which tasks succeeded and which failed
+
+6. **Spawn `gsd-verifier`** after executors complete:
+   ```
+   Task(subagent_type="gsd-verifier", prompt="""
+   Verify the implementation of BMAD story {story-key}.
+
+   GOAL: {story user story / objective}
+
+   ACCEPTANCE CRITERIA:
+   {AC list from story}
+
+   PLAN PATH: .planning/phases/bmad-story-{story-key}/PLAN.md
+
+   Perform goal-backward analysis: does the codebase now deliver what the story promised?
+   Check that all acceptance criteria are satisfied, not just that tasks were completed.
+   Create a VERIFICATION.md report at .planning/phases/bmad-story-{story-key}/VERIFICATION.md
+   """)
+   ```
+   - If verifier finds failures: attempt remediation (fix + re-verify, up to 2 rounds)
+   - If still failing: HALT with verifier report
+
+7. Proceed to Phase 4 (Verify)
 
 ---
 
@@ -218,6 +308,8 @@ Only reach here if ALL ACs pass and ALL tests pass.
    - Status → `review`
    - Dev Agent Record section:
      - Agent Model Used: (your model)
+     - Route Taken: {SIMPLE|MODERATE|COMPLEX} (score: {N}/16)
+     - GSD Subagents Used: {list of subagents used, e.g. "gsd-executor" or "none (direct execution)"}
      - Debug Log References: (any issues encountered)
      - Completion Notes List: (summary of what was implemented)
      - Change Log: (date and description)
@@ -232,6 +324,7 @@ Only reach here if ALL ACs pass and ALL tests pass.
    ════════════════════════════════════════
    Key:        {story-key}
    Route:      {SIMPLE|MODERATE|COMPLEX} (score: {N}/16)
+   GSD Usage:  {subagents used, e.g. "gsd-executor" or "gsd-plan-checker → gsd-executor → gsd-verifier" or "direct execution (no subagents)"}
    Tasks:      {completed}/{total}
    Tests:      {pass count} passing, {fail count} failing
    Coverage:   {if available}

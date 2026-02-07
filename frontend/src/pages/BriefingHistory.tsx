@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser } from '../providers/ClerkProvider';
 import {
   FiCalendar,
   FiChevronLeft,

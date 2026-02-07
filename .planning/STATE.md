@@ -161,6 +161,10 @@ Progress: [███████████████████████
 - ~~Resolve email service choice: Resend vs SendGrid (Phase 1, low stakes)~~ RESOLVED in 01-01
 - Budget for job board aggregator APIs: $50-200/month (needed Phase 4)
 
+### Roadmap Evolution
+
+- Phase 10 added: Frontend Alignment + LinkedIn Post Generator v2 (surface hidden features, modernize LinkedIn content tool)
+
 ### Blockers/Concerns
 
 - ~~ADR-1 (LangGraph vs Custom orchestrator) MUST be resolved at start of Phase 3 via 2-day prototype~~ RESOLVED in 03-01 (Custom wins)

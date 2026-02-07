@@ -3,8 +3,10 @@ Clerk JWT authentication for FastAPI.
 
 Uses the ``fastapi-clerk-auth`` package to validate JWTs against Clerk's
 JWKS endpoint.  If CLERK_DOMAIN is not configured (empty string), the
-dependency will always reject requests with 401 -- this is intentional so
-that protected routes are never accidentally left open.
+dependency behavior depends on APP_ENV:
+
+- **development**: Returns a fake dev user (allows testing without Clerk)
+- **production/staging**: Rejects with 401 (never leave routes open)
 
 Usage as a FastAPI dependency::
 
@@ -26,6 +28,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Dev user ID used when auth is bypassed in development mode
+DEV_USER_ID = "dev_user_00000000-0000-0000-0000-000000000001"
+
+
+class _DevAuthPayload:
+    """Fake auth payload for development mode."""
+
+    def __init__(self):
+        self.decoded = {"sub": DEV_USER_ID}
+
 
 def _build_clerk_auth():
     """
@@ -35,7 +47,23 @@ def _build_clerk_auth():
     against Clerk's JWKS.  Lazily imports ``fastapi_clerk_auth`` so the
     module can be loaded even if the package is not yet installed (the
     import error will surface only when a protected endpoint is hit).
+
+    In development mode with no CLERK_DOMAIN, returns a dev bypass that
+    always authenticates as a fake dev user.
     """
+    # Dev bypass: allow unauthenticated access in development mode
+    if not settings.CLERK_DOMAIN and settings.APP_ENV == "development":
+        logger.warning(
+            "🔓 DEV MODE: Auth bypassed. All requests authenticate as %s. "
+            "Set CLERK_DOMAIN to enable real auth.",
+            DEV_USER_ID,
+        )
+
+        async def _dev_bypass(**_kwargs: Any):
+            return _DevAuthPayload()
+
+        return _dev_bypass
+
     try:
         from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer
 

@@ -1,4 +1,7 @@
-import { useUser, UserButton } from '@clerk/clerk-react';
+import { UserButton as ClerkUserButton } from '@clerk/clerk-react';
+import { useUser, isDevAuthMode, DevUserButton } from '../providers/ClerkProvider';
+
+const UserButton = isDevAuthMode ? DevUserButton : ClerkUserButton;
 import AgentActivityFeed from '../components/AgentActivityFeed';
 import BriefingCard, {
   BriefingEmptyState,

@@ -23,6 +23,14 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.tracing import setup_observability
 from app.observability.error_tracking import configure_sentry_scope
 
+# Import models at top-level for FastAPI type annotation resolution
+from app.models import (
+    ColdEmailRequest, ColdEmailResponse,
+    LinkedInPostRequest, LinkedInPostResponse,
+    HealthCheckResponse, ErrorResponse,
+    AuthorStyleUploadResponse, AuthorStyleSummary, AuthorStyleDetail,
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -115,12 +123,6 @@ def _register_legacy_routes(application: FastAPI) -> None:
     """Register all original routes so the existing frontend keeps working."""
 
     # Lazy-import services to avoid circular imports and keep create_app() fast
-    from app.models import (
-        ColdEmailRequest, ColdEmailResponse,
-        LinkedInPostRequest, LinkedInPostResponse,
-        HealthCheckResponse, ErrorResponse,
-        AuthorStyleUploadResponse, AuthorStyleSummary, AuthorStyleDetail,
-    )
     from app.services.email_service import EmailService
     from app.services.post_service import LinkedInPostService
     from app.services.author_styles_service import AuthorStylesService

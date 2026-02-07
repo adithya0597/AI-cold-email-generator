@@ -1,6 +1,13 @@
 import { SignIn as ClerkSignIn } from '@clerk/clerk-react';
+import { Navigate } from 'react-router-dom';
+import { isDevAuthMode } from '../providers/ClerkProvider';
 
 export default function SignIn() {
+  // Dev mode: already "signed in", redirect to dashboard
+  if (isDevAuthMode) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <ClerkSignIn

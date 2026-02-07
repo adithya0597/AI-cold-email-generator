@@ -1,15 +1,18 @@
 /**
- * ProtectedRoute -- requires Clerk authentication and syncs user record.
+ * ProtectedRoute -- requires authentication and syncs user record.
  *
  * If the user is not signed in, redirects to /sign-in.
  * On mount (when authenticated), calls POST /api/v1/auth/sync to ensure
  * a local user record exists. Uses the is_new flag to navigate new users
  * to /onboarding and returning users to /dashboard.
+ *
+ * In dev auth mode (no Clerk key), useAuth returns stub values so the
+ * user is always treated as authenticated.
  */
 
 import { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth } from '../../providers/ClerkProvider';
 import { useApiClient } from '../../services/api';
 
 export default function ProtectedRoute() {
@@ -32,13 +35,10 @@ export default function ProtectedRoute() {
         }
       })
       .catch((err) => {
-        // Sync failure is non-blocking -- user can still use the app.
-        // Auth interceptor handles 401 redirects.
         console.error('User sync failed:', err);
       });
   }, [isLoaded, isSignedIn, apiClient, navigate, location.pathname]);
 
-  // Wait for Clerk to load before making any routing decisions
   if (!isLoaded) {
     return null;
   }
@@ -47,6 +47,5 @@ export default function ProtectedRoute() {
     return <Navigate to="/sign-in" replace />;
   }
 
-  // Render children immediately; sync runs in the background
   return <Outlet />;
 }

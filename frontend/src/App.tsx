@@ -9,7 +9,7 @@ const SignedOut = isDevAuthMode ? DevSignedOut : ClerkSignedOut;
 const UserButton = isDevAuthMode ? DevUserButton : ClerkUserButton;
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FiActivity, FiSettings, FiHome, FiLogIn, FiTarget, FiTrello, FiClock, FiShield } from 'react-icons/fi';
+import { FiActivity, FiSettings, FiHome, FiLogIn, FiTarget, FiTrello, FiClock, FiShield, FiBriefcase, FiGlobe, FiBookOpen, FiDatabase, FiEdit } from 'react-icons/fi';
 
 import { initSentry } from './lib/sentry';
 
@@ -35,6 +35,7 @@ import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
 import Privacy from './pages/Privacy';
 import H1B from './pages/H1B';
+import EnterpriseAdmin from './pages/EnterpriseAdmin';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 import { useStealthStatus } from './services/privacy';
@@ -158,6 +159,58 @@ function App() {
                     Follow-ups
                   </NavLink>
                   <NavLink
+                    to="/applications"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiBriefcase className="mr-2" />
+                    Applications
+                  </NavLink>
+                  <NavLink
+                    to="/h1b"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiGlobe className="mr-2" />
+                    H1B
+                  </NavLink>
+                  <NavLink
+                    to="/briefings"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiBookOpen className="mr-2" />
+                    Briefings
+                  </NavLink>
+                  <NavLink
+                    to="/linkedin"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiEdit className="mr-2" />
+                    LinkedIn
+                  </NavLink>
+                  <NavLink
                     to="/privacy"
                     className={({ isActive }) =>
                       `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -182,6 +235,20 @@ function App() {
                   >
                     <FiSettings className="mr-2" />
                     Settings
+                  </NavLink>
+                  {/* TODO: conditionally show Admin nav only for enterprise users */}
+                  <NavLink
+                    to="/admin/enterprise"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiDatabase className="mr-2" />
+                    Admin
                   </NavLink>
                 </div>
               </div>
@@ -288,6 +355,58 @@ function App() {
                 Follow-ups
               </NavLink>
               <NavLink
+                to="/applications"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiBriefcase className="inline mr-2" />
+                Applications
+              </NavLink>
+              <NavLink
+                to="/h1b"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiGlobe className="inline mr-2" />
+                H1B
+              </NavLink>
+              <NavLink
+                to="/briefings"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiBookOpen className="inline mr-2" />
+                Briefings
+              </NavLink>
+              <NavLink
+                to="/linkedin"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiEdit className="inline mr-2" />
+                LinkedIn
+              </NavLink>
+              <NavLink
                 to="/privacy"
                 className={({ isActive }) =>
                   `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
@@ -312,6 +431,20 @@ function App() {
               >
                 <FiSettings className="inline mr-2" />
                 Settings
+              </NavLink>
+              {/* TODO: conditionally show Admin nav only for enterprise users */}
+              <NavLink
+                to="/admin/enterprise"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiDatabase className="inline mr-2" />
+                Admin
               </NavLink>
             </div>
           </div>
@@ -388,6 +521,14 @@ function App() {
                 element={
                   <OnboardingGuard>
                     <H1B />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/admin/enterprise"
+                element={
+                  <OnboardingGuard>
+                    <EnterpriseAdmin />
                   </OnboardingGuard>
                 }
               />
