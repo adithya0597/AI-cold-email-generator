@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApiClient } from '../services/api';
+import { isDevAuthMode } from './ClerkProvider';
 import type { OnboardingStatusResponse } from '../types/onboarding';
 
 interface OnboardingGuardProps {
@@ -26,9 +27,13 @@ export default function OnboardingGuard({ children }: OnboardingGuardProps) {
   const [isChecking, setIsChecking] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
 
+  // In dev auth mode, skip the onboarding check entirely so all pages are accessible
+  // without a running backend or completed onboarding flow.
+  const devBypass = isDevAuthMode;
+
   // Skip guard for onboarding/preferences paths (shouldn't wrap them, but safety check)
   const skipPaths = ['/onboarding', '/preferences'];
-  const shouldSkip = skipPaths.some((p) => location.pathname.startsWith(p));
+  const shouldSkip = devBypass || skipPaths.some((p) => location.pathname.startsWith(p));
 
   useEffect(() => {
     if (shouldSkip) {

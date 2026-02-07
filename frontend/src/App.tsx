@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
+import { SignedIn as ClerkSignedIn, SignedOut as ClerkSignedOut, UserButton as ClerkUserButton } from '@clerk/clerk-react';
+import { isDevAuthMode, DevSignedIn, DevSignedOut, DevUserButton } from './providers/ClerkProvider';
+
+const SignedIn = isDevAuthMode ? DevSignedIn : ClerkSignedIn;
+const SignedOut = isDevAuthMode ? DevSignedOut : ClerkSignedOut;
+const UserButton = isDevAuthMode ? DevUserButton : ClerkUserButton;
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FiMail, FiLinkedin, FiActivity, FiSettings, FiHome, FiUsers, FiLogIn } from 'react-icons/fi';
+import { FiActivity, FiSettings, FiHome, FiLogIn, FiTarget, FiTrello, FiClock, FiShield } from 'react-icons/fi';
 
 import { initSentry } from './lib/sentry';
 
@@ -29,6 +34,7 @@ import Applications from './pages/Applications';
 import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
 import Privacy from './pages/Privacy';
+import H1B from './pages/H1B';
 import OnboardingGuard from './providers/OnboardingGuard';
 import { utilityService } from './services/api';
 import { useStealthStatus } from './services/privacy';
@@ -87,6 +93,7 @@ function App() {
                 <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
                   <NavLink
                     to="/"
+                    end
                     className={({ isActive }) =>
                       `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                         isActive
@@ -97,45 +104,6 @@ function App() {
                   >
                     <FiHome className="mr-2" />
                     Home
-                  </NavLink>
-                  <NavLink
-                    to="/email"
-                    className={({ isActive }) =>
-                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive
-                          ? 'border-primary-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`
-                    }
-                  >
-                    <FiMail className="mr-2" />
-                    Cold Email
-                  </NavLink>
-                  <NavLink
-                    to="/linkedin"
-                    className={({ isActive }) =>
-                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive
-                          ? 'border-primary-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`
-                    }
-                  >
-                    <FiLinkedin className="mr-2" />
-                    LinkedIn Post
-                  </NavLink>
-                  <NavLink
-                    to="/author-styles"
-                    className={({ isActive }) =>
-                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive
-                          ? 'border-primary-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`
-                    }
-                  >
-                    <FiUsers className="mr-2" />
-                    Author Styles
                   </NavLink>
                   <NavLink
                     to="/dashboard"
@@ -151,6 +119,19 @@ function App() {
                     Dashboard
                   </NavLink>
                   <NavLink
+                    to="/matches"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiTarget className="mr-2" />
+                    Matches
+                  </NavLink>
+                  <NavLink
                     to="/pipeline"
                     className={({ isActive }) =>
                       `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -160,6 +141,7 @@ function App() {
                       }`
                     }
                   >
+                    <FiTrello className="mr-2" />
                     Pipeline
                   </NavLink>
                   <NavLink
@@ -172,7 +154,21 @@ function App() {
                       }`
                     }
                   >
+                    <FiClock className="mr-2" />
                     Follow-ups
+                  </NavLink>
+                  <NavLink
+                    to="/privacy"
+                    className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    <FiShield className="mr-2" />
+                    Privacy
                   </NavLink>
                   <NavLink
                     to="/settings"
@@ -227,6 +223,7 @@ function App() {
             <div className="pt-2 pb-3 space-y-1">
               <NavLink
                 to="/"
+                end
                 className={({ isActive }) =>
                   `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
                     isActive
@@ -237,45 +234,6 @@ function App() {
               >
                 <FiHome className="inline mr-2" />
                 Home
-              </NavLink>
-              <NavLink
-                to="/email"
-                className={({ isActive }) =>
-                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                    isActive
-                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                  }`
-                }
-              >
-                <FiMail className="inline mr-2" />
-                Cold Email
-              </NavLink>
-              <NavLink
-                to="/linkedin"
-                className={({ isActive }) =>
-                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                    isActive
-                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                  }`
-                }
-              >
-                <FiLinkedin className="inline mr-2" />
-                LinkedIn Post
-              </NavLink>
-              <NavLink
-                to="/author-styles"
-                className={({ isActive }) =>
-                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                    isActive
-                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                  }`
-                }
-              >
-                <FiUsers className="inline mr-2" />
-                Author Styles
               </NavLink>
               <NavLink
                 to="/dashboard"
@@ -291,6 +249,19 @@ function App() {
                 Dashboard
               </NavLink>
               <NavLink
+                to="/matches"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiTarget className="inline mr-2" />
+                Matches
+              </NavLink>
+              <NavLink
                 to="/pipeline"
                 className={({ isActive }) =>
                   `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
@@ -300,6 +271,7 @@ function App() {
                   }`
                 }
               >
+                <FiTrello className="inline mr-2" />
                 Pipeline
               </NavLink>
               <NavLink
@@ -312,7 +284,21 @@ function App() {
                   }`
                 }
               >
+                <FiClock className="inline mr-2" />
                 Follow-ups
+              </NavLink>
+              <NavLink
+                to="/privacy"
+                className={({ isActive }) =>
+                  `block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive
+                      ? 'bg-indigo-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`
+                }
+              >
+                <FiShield className="inline mr-2" />
+                Privacy
               </NavLink>
               <NavLink
                 to="/settings"
@@ -394,6 +380,14 @@ function App() {
                 element={
                   <OnboardingGuard>
                     <Privacy />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/h1b"
+                element={
+                  <OnboardingGuard>
+                    <H1B />
                   </OnboardingGuard>
                 }
               />

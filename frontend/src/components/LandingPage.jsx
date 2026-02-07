@@ -1,58 +1,58 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiMail, FiLinkedin, FiTrendingUp, FiZap, FiTarget, FiClock } from 'react-icons/fi';
+import { FiActivity, FiTarget, FiTrello, FiFileText, FiGlobe, FiShield } from 'react-icons/fi';
 
 const LandingPage = () => {
   const features = [
     {
-      icon: FiMail,
-      title: 'Personalized Cold Emails',
-      description: 'Generate highly targeted emails using AI-powered resume analysis and company research',
-      link: '/email',
+      icon: FiActivity,
+      title: 'Daily Briefings',
+      description: 'Wake up to a personalized briefing with curated jobs matched to your skills and preferences',
+      link: '/dashboard',
       color: 'text-blue-600'
     },
     {
-      icon: FiLinkedin,
-      title: 'LinkedIn Post Generator',
-      description: 'Create engaging posts in various influencer styles with goal-oriented CTAs',
-      link: '/linkedin',
-      color: 'text-blue-700'
-    },
-    {
       icon: FiTarget,
-      title: 'Value Proposition Synthesis',
-      description: 'AI analyzes and creates compelling value propositions that resonate',
-      link: '/email',
+      title: 'Smart Job Matching',
+      description: 'Swipe through AI-scored matches with transparent reasoning on why each job fits you',
+      link: '/matches',
       color: 'text-green-600'
     },
     {
-      icon: FiTrendingUp,
-      title: 'Performance Tracking',
-      description: 'Monitor email open rates and LinkedIn engagement metrics in real-time',
-      link: '/dashboard',
+      icon: FiTrello,
+      title: 'Pipeline Tracking',
+      description: 'Kanban-style board to manage every application from discovery through offer',
+      link: '/pipeline',
       color: 'text-purple-600'
     },
     {
-      icon: FiZap,
-      title: 'Multi-LLM Support',
-      description: 'Powered by OpenAI GPT-4 and Anthropic Claude with automatic fallback',
-      link: '/settings',
-      color: 'text-yellow-600'
+      icon: FiFileText,
+      title: 'Resume Tailoring',
+      description: 'Automatically tailor your resume for each role, highlighting the most relevant experience',
+      link: '/dashboard',
+      color: 'text-indigo-600'
     },
     {
-      icon: FiClock,
-      title: 'Save Hours Weekly',
-      description: 'Reduce content creation time by 80% while improving quality and conversion',
-      link: '/email',
+      icon: FiGlobe,
+      title: 'H1B Sponsor Intelligence',
+      description: 'Check company sponsorship history, approval rates, and wage data before you apply',
+      link: '/h1b',
+      color: 'text-teal-600'
+    },
+    {
+      icon: FiShield,
+      title: 'Privacy Controls',
+      description: 'Block companies, go stealth, and control exactly what data your AI agent can access',
+      link: '/privacy',
       color: 'text-red-600'
     }
   ];
 
   const stats = [
-    { value: '150%', label: 'Higher Open Rates' },
-    { value: '3x', label: 'More Engagement' },
-    { value: '80%', label: 'Time Saved' },
-    { value: '24/7', label: 'AI Availability' }
+    { value: '100+', label: 'Jobs Scanned Daily' },
+    { value: 'L0-L3', label: 'Autonomy Tiers' },
+    { value: '7-Step', label: 'Preference Engine' },
+    { value: '24/7', label: 'Agent Availability' }
   ];
 
   return (
@@ -60,18 +60,18 @@ const LandingPage = () => {
       {/* Hero Section */}
       <section className="text-center py-12">
         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-          AI Content Generation Suite
+          Your AI Career Agent
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-          Transform your outreach with AI-powered cold emails and LinkedIn posts that convert.
-          Built with advanced context engineering for maximum personalization.
+          Automated job discovery, intelligent matching, and application tracking —
+          powered by a multi-agent system that works while you sleep.
         </p>
         <div className="flex justify-center space-x-4">
-          <Link to="/email" className="btn-primary">
-            Generate Cold Email
+          <Link to="/sign-up" className="btn-primary">
+            Get Started
           </Link>
-          <Link to="/linkedin" className="btn-secondary">
-            Create LinkedIn Post
+          <Link to="/dashboard" className="btn-secondary">
+            Explore Dashboard
           </Link>
         </div>
       </section>
@@ -88,7 +88,7 @@ const LandingPage = () => {
 
       {/* Features Grid */}
       <section>
-        <h2 className="text-3xl font-bold text-center mb-8">Powerful Features</h2>
+        <h2 className="text-3xl font-bold text-center mb-8">Everything You Need to Land Your Next Role</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => {
             const Icon = feature.icon;
@@ -121,27 +121,27 @@ const LandingPage = () => {
             <div className="w-16 h-16 mx-auto mb-4 bg-primary-100 rounded-full flex items-center justify-center">
               <span className="text-2xl font-bold text-primary-600">1</span>
             </div>
-            <h3 className="font-semibold mb-2">Upload & Input</h3>
+            <h3 className="font-semibold mb-2">Upload Your Resume</h3>
             <p className="text-gray-600 text-sm">
-              Upload your resume and provide target company details or LinkedIn post requirements
+              Our AI parses your experience, skills, and goals to build your career profile
             </p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-primary-100 rounded-full flex items-center justify-center">
               <span className="text-2xl font-bold text-primary-600">2</span>
             </div>
-            <h3 className="font-semibold mb-2">AI Processing</h3>
+            <h3 className="font-semibold mb-2">Get Daily Matches</h3>
             <p className="text-gray-600 text-sm">
-              Our AI analyzes data, synthesizes value propositions, and generates personalized content
+              Every morning, receive a curated briefing with jobs scored and ranked for your profile
             </p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-primary-100 rounded-full flex items-center justify-center">
               <span className="text-2xl font-bold text-primary-600">3</span>
             </div>
-            <h3 className="font-semibold mb-2">Track & Optimize</h3>
+            <h3 className="font-semibold mb-2">Track & Apply</h3>
             <p className="text-gray-600 text-sm">
-              Monitor performance metrics and continuously improve your outreach strategy
+              Manage your pipeline, get tailored resumes, and let AI handle follow-ups
             </p>
           </div>
         </div>
@@ -151,7 +151,7 @@ const LandingPage = () => {
       <section className="text-center">
         <h2 className="text-3xl font-bold mb-8">Powered By Advanced Technology</h2>
         <div className="flex flex-wrap justify-center gap-4">
-          {['FastAPI', 'React', 'OpenAI GPT-4', 'Anthropic Claude', 'BeautifulSoup', 'TailwindCSS'].map((tech) => (
+          {['FastAPI', 'React', 'TypeScript', 'OpenAI GPT-4', 'Anthropic Claude', 'Supabase', 'TailwindCSS'].map((tech) => (
             <span
               key={tech}
               className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 font-medium"
@@ -164,11 +164,11 @@ const LandingPage = () => {
 
       {/* CTA Section */}
       <section className="text-center bg-gradient-to-r from-primary-600 to-secondary-600 rounded-xl p-12 text-white">
-        <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Outreach?</h2>
+        <h2 className="text-3xl font-bold mb-4">Ready to Automate Your Job Search?</h2>
         <p className="text-xl mb-8 opacity-90">
-          Start generating high-converting content in minutes
+          Join JobPilot and let AI agents find, match, and track opportunities for you
         </p>
-        <Link to="/email" className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+        <Link to="/sign-up" className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
           Get Started Free
         </Link>
       </section>
