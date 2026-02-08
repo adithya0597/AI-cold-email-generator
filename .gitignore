@@ -73,8 +73,7 @@ temp/
 *.xls
 sample_author_styles.xlsx
 
-# AI Files
-CLAUDE.MD
+# AI Files (keep CLAUDE.md tracked for project context)
 .claude/
 
 # Documentation to exclude

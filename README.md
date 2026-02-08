@@ -1,127 +1,138 @@
-# AI Content Generation Suite
+# JobPilot
 
-A production-ready web application for generating personalized cold emails and LinkedIn posts using advanced AI capabilities.
+An AI-powered multi-agent career platform that automates job discovery, resume tailoring, application tracking, and outreach generation.
 
 ## Features
 
-### Cold Email Generator
-- Resume parsing (PDF/DOCX)
-- Company website research via web scraping
-- Job posting integration for targeted outreach
-- Personalized value propositions using Josh Braun's 4T methodology
-- Multiple tone options
+- **Multi-Agent System** with tiered autonomy (L0-L3): suggestions-only to fully autonomous
+- **Daily Briefings** with personalized job matches and agent activity summaries
+- **Resume Parsing & Tailoring** per job posting
+- **Cold Email & LinkedIn Post Generation** with author style analysis
+- **H1B Sponsorship Research** and employer scoring
+- **Application Pipeline** management with follow-up automation
+- **Enterprise Administration** with org-level controls
 
-### LinkedIn Post Generator  
-- Multiple writing styles (Gary Vaynerchuk, Simon Sinek, etc.)
-- Topic-specific trending hashtags
-- Reference URL integration (up to 3 sources)
-- Optional AI image generation
-- Engagement optimization
+## Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | FastAPI, SQLAlchemy async (asyncpg), Celery + Redis, Clerk auth, Pydantic 2 |
+| **Frontend** | React 18, TypeScript, Vite 6, Tailwind CSS, Zustand, TanStack Query, Clerk |
+| **Database** | Supabase PostgreSQL, Alembic migrations, Row-Level Security |
+| **Testing** | pytest + pytest-asyncio (backend), Vitest + testing-library (frontend) |
+| **Observability** | Sentry, Langfuse (LLM tracing), PostHog analytics, OpenTelemetry |
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.9+
-- Node.js 16+
-- OpenAI or Anthropic API key (optional)
 
-### Backend Setup
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL (via Supabase or local)
+- Redis (for Celery workers)
+
+### Backend
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd AI-cold-email-generator
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 cd backend
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 
-# Set environment variables
-export OPENAI_API_KEY="your_key_here"  # Or use .env file
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
 
 # Run server
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend Setup
+### Frontend
 
 ```bash
-# Install dependencies
 cd frontend
 npm install
 
-# Start development server
-npm start
+# Configure environment
+cp .env.example .env
+# Edit .env with your Clerk and API keys
+
+# Start dev server
+npm run dev
+```
+
+### Database
+
+```bash
+# Apply migrations to Supabase
+supabase db push
+
+# Or run locally
+python backend/scripts/run_migrations.py
 ```
 
 The application will be available at:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
+- API Docs: http://localhost:8000/docs
 
 ## Project Structure
 
 ```
 .
-├── backend/
+├── backend/             # FastAPI backend (app factory pattern)
 │   ├── app/
-│   │   ├── main.py              # FastAPI application
-│   │   ├── models.py            # Pydantic models
-│   │   ├── core/                # Core utilities
-│   │   ├── services/            # Business logic
-│   │   └── monitoring/          # Alerts and metrics
-│   └── tests/                   # Test suite
-│
-└── frontend/
-    ├── src/
-    │   ├── components/          # React components
-    │   └── services/            # API services
-    └── public/                  # Static assets
+│   │   ├── agents/      # Multi-agent framework (orchestrator, brake, tiers)
+│   │   ├── api/v1/      # Versioned API routes
+│   │   ├── auth/        # Clerk JWT authentication
+│   │   ├── core/        # LLM clients, web scraper, error handling
+│   │   ├── db/          # SQLAlchemy engine, Supabase client
+│   │   ├── middleware/   # Rate limiting
+│   │   ├── observability/ # Sentry, Langfuse, OpenTelemetry
+│   │   ├── services/    # Business logic (email, posts, job sources)
+│   │   └── worker/      # Celery background tasks
+│   └── tests/
+├── frontend/            # React SPA
+│   └── src/
+│       ├── components/  # UI components by domain
+│       ├── pages/       # Route-level components
+│       ├── services/    # API clients
+│       ├── providers/   # React context providers
+│       └── hooks/       # Custom hooks
+├── supabase/            # Database migrations
+└── docs/                # Architecture documentation
 ```
 
 ## API Endpoints
 
-### Email Generation
-- `POST /api/generate-email` - Generate cold email
-- `POST /api/parse-resume` - Parse resume file
+### v1 API (`/api/v1/`)
+- `GET /api/v1/health` - Health check
+- `POST /api/v1/onboarding/*` - User onboarding flow
+- `GET /api/v1/briefings` - Daily briefings
+- `GET /api/v1/matches` - Job matches
+- `POST /api/v1/applications` - Application tracking
+- `GET /api/v1/agents/status` - Agent status and control
 
-### LinkedIn Posts
-- `POST /api/generate-post` - Generate LinkedIn post
-
-### Utilities
-- `GET /health` - Health check
-- `POST /api/scrape-url` - Scrape website
-
-## Environment Variables
-
-```env
-# Required
-OPENAI_API_KEY=your_key_here
-
-# Optional
-ANTHROPIC_API_KEY=your_anthropic_key
-SERP_API_KEY=your_search_api_key
-TRACKING_BASE_URL=http://localhost:8000/api/track
-```
+### Legacy (`/api/`)
+- `POST /api/generate-email` - Cold email generation
+- `POST /api/generate-post` - LinkedIn post generation
+- `POST /api/parse-resume` - Resume parsing
 
 ## Testing
 
 ```bash
-# Run tests
-pytest backend/tests/ -v
+# Backend
+cd backend
+pytest                    # All tests
+pytest -x                 # Stop on first failure
+pytest --cov=app          # With coverage
 
-# With coverage
-pytest backend/tests/ --cov=app --cov-report=html
+# Frontend
+cd frontend
+npm test                  # Vitest
+npm run lint              # ESLint
 ```
 
 ## License
 
 MIT
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
